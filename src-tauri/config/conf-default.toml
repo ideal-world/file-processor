@@ -1,0 +1,4 @@
+[fw.app]
+id = "file-processor"
+name = "file-processor"
+version = "0.1.0"
