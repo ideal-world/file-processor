@@ -17,6 +17,8 @@
     "shell:allow-open",
     "dialog:default",
     "dialog:allow-message",
-    "dialog:allow-open"
+    "dialog:allow-open",
+    "cli:default",
+    "cli:allow-cli-matches"
   ]
 }

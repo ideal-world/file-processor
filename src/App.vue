@@ -1,8 +1,10 @@
 <script setup lang="ts">
-import { onMounted } from 'vue'
-import UploaderComp from './components/Uploader.vue'
+import { invoke } from '@tauri-apps/api/core';
+import { onMounted } from 'vue';
+import UploaderComp from './components/Uploader.vue';
 
-onMounted(() => {
+onMounted(async () => {
+  const params = await invoke('get_params')
 })
 </script>
 

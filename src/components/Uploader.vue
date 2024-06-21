@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { message, open } from '@tauri-apps/plugin-dialog'
 import { invoke } from '@tauri-apps/api/core'
+import { message, open } from '@tauri-apps/plugin-dialog'
 
 async function selectFiles() {
   const files = await open({

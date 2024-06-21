@@ -35,5 +35,17 @@
         "type": "offlineInstaller"
       }
     }
+  },
+  "plugins": {
+    "cli": {
+      "args": [
+        {
+          "short": "p",
+          "takesValue": true,
+          "name": "params",
+          "required": false
+        }
+      ]
+    }
   }
 }
