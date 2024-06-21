@@ -12,8 +12,8 @@
     "windows": [
       {
         "title": "文件处理服务",
-        "width": 650,
-        "height": 420
+        "width": 300,
+        "height": 250
       }
     ],
     "security": {
@@ -33,6 +33,16 @@
     "windows": {
       "webviewInstallMode": {
         "type": "offlineInstaller"
+      }
+    }
+  },
+  "plugins": {
+    "deep-link": {
+      "mobile": [
+        { "host": "file-processor.idealworld.group", "pathPrefix": ["/open"] }
+      ],
+      "desktop": {
+        "schemes": ["file-processor"]
       }
     }
   }

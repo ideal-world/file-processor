@@ -16,6 +16,10 @@
     "tray:default",
     "shell:allow-open",
     "dialog:default",
-    "log:default"
+    "log:default",
+    "dialog:allow-message",
+    "dialog:allow-open",
+    "deep-link:default",
+    "deep-link:allow-get-current"
   ]
 }

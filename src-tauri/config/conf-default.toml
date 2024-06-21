@@ -2,3 +2,7 @@
 id = "file-processor"
 name = "file-processor"
 version = "0.1.0"
+
+[cs]
+create_folder_url = ""
+upload_file_url = ""
