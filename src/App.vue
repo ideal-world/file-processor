@@ -1,19 +1,8 @@
 <script setup lang="ts">
-import {
-  onOpenUrl,
-} from '@tauri-apps/plugin-deep-link';
-import { message } from '@tauri-apps/plugin-dialog';
 import { onMounted } from 'vue';
 import UploaderComp from './components/Uploader.vue';
 
-async function handler(urls: string[]) {
-  await message(urls[0])
-  const updateIntentEl = document.querySelector('#event-intent')!
-  updateIntentEl.textContent = JSON.stringify(urls)
-}
-
 onMounted(() => {
-  onOpenUrl(handler)
 })
 </script>
 
