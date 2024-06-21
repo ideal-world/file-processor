@@ -16,7 +16,6 @@
     "tray:default",
     "shell:allow-open",
     "dialog:default",
-    "log:default",
     "dialog:allow-message",
     "dialog:allow-open"
   ]
