@@ -4,7 +4,7 @@
   "identifier": "group.idealworld.file-processor",
   "build": {
     "beforeDevCommand": "pnpm dev",
-    "devUrl": "http://localhost:1420",
+    "devUrl": "http://localhost:1421",
     "beforeBuildCommand": "pnpm build",
     "frontendDist": "../dist"
   },
@@ -32,20 +32,19 @@
     ],
     "windows": {
       "webviewInstallMode": {
-        "type": "offlineInstaller"
+        "type": "downloadBootstrapper"
       }
     }
   },
   "plugins": {
-    "cli": {
-      "args": [
-        {
-          "short": "p",
-          "takesValue": true,
-          "name": "params",
-          "required": false
-        }
-      ]
+    "deep-link": {
+      "mobile": [
+        { "host": "file-processor-idealworld.group", "pathPrefix": ["/open"] },
+        { "host": "another.site.br" }
+      ],
+      "desktop": {
+        "schemes": ["file-processor"]
+      }
     }
   }
 }

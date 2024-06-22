@@ -1,10 +1,10 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-use std::{clone, env, sync::Mutex};
-
+use log::info;
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
-use tardis::{basic::result::TardisResult, log::info, tokio, TardisFuns};
+use std::{clone, env, sync::Mutex};
+use tardis::{basic::result::TardisResult, tokio, TardisFuns};
 mod tauri;
 mod uploader;
 
@@ -20,6 +20,28 @@ pub static PARAMS: Lazy<Mutex<FileProcessParams>> = Lazy::new(|| {
 #[tokio::main]
 async fn main() -> TardisResult<()> {
     env::set_var("RUST_LOG", "debug");
+    let args: Vec<String> = env::args().collect();
+    if args.len() > 0 {
+        let mut raw_params = args[1].as_str();
+        if raw_params.contains("//") {
+            let index = raw_params.find("//").unwrap();
+            raw_params = &raw_params[index + 2..];
+        }
+        if raw_params.ends_with("/") {
+            raw_params = &raw_params[..raw_params.len() - 1];
+        }
+        let params = TardisFuns::json
+            .str_to_obj::<FileProcessParams>(
+                &TardisFuns::crypto
+                    .base64
+                    .decode_to_string(raw_params)
+                    .unwrap(),
+            )
+            .unwrap();
+        info!("params: {:?}", params);
+        let mut params_set = PARAMS.lock().unwrap();
+        *params_set = params;
+    }
 
     tauri::build();
 

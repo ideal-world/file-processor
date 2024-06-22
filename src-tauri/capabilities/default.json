@@ -18,7 +18,11 @@
     "dialog:default",
     "dialog:allow-message",
     "dialog:allow-open",
-    "cli:default",
-    "cli:allow-cli-matches"
+    "deep-link:default",
+    "deep-link:allow-get-current",
+    "deep-link:allow-register",
+    "deep-link:allow-is-registered",
+    "log:default",
+    "log:allow-log"
   ]
 }
