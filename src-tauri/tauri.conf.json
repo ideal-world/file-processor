@@ -11,13 +11,17 @@
   "app": {
     "windows": [
       {
+        "label": "main",
         "title": "文件处理服务",
+        "resizable": false,
+        "fullscreen": false,
         "width": 300,
-        "height": 250
+        "height": 400,
+        "focus": true
       }
     ],
     "security": {
-      "csp": "default-href 'self'; a-href file-processor://*;"
+      "csp": null
     }
   },
   "bundle": {
