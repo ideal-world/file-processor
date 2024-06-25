@@ -48,7 +48,7 @@ async fn main() -> TardisResult<()> {
                 target_kind_key: "".to_string(),
                 target_obj_key: "".to_string(),
                 overwrite: false,
-                upload_metadata_data_url: "".to_string(),
+                upload_metadata_url: "".to_string(),
             }),
         };
     }
@@ -73,5 +73,5 @@ pub struct FileUploadProcessParams {
     pub target_kind_key: String,
     pub target_obj_key: String,
     pub overwrite: bool,
-    pub upload_metadata_data_url: String,
+    pub upload_metadata_url: String,
 }
