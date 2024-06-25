@@ -1352,6 +1352,7 @@ name = "file-processor"
 version = "0.1.0"
 dependencies = [
  "log",
+ "mime-infer",
  "once_cell",
  "serde",
  "serde_json",
@@ -2500,6 +2501,16 @@ name = "mime"
 version = "0.3.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6877bb514081ee2a7ff5ef9de3281f14a4dd4bceac4c09388074a6b5df8a139a"
+
+[[package]]
+name = "mime-infer"
+version = "3.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "91caed19dd472bc88bcd063571df18153529d49301a1918f4cf37f42332bee2e"
+dependencies = [
+ "mime",
+ "unicase",
+]
 
 [[package]]
 name = "mime_guess"
