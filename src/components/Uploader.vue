@@ -40,22 +40,23 @@ async function init() {
 }
 init()
 
-async function selectFiles() {
+async function selectFiles(is_dir: boolean) {
   const files = await open({
     multiple: true,
-    directory: true,
+    directory: is_dir,
   })
   if (!files) {
     await message('没有选择任何文件或文件夹', { kind: 'warning' })
     return
   }
   triggerUpload.value = true
-  info(`upload file from :${files[0]}`)
+  const filesUri = is_dir ? files : files.map((v, i, a) => v.path)
+  info(`upload file from :${JSON.stringify(filesUri)}`)
   uploadedStatsResp.value = {
     total_file_numbers: 0,
     total_file_size: 0,
   }
-  totalStatsResp.value = await invoke('upload_files', { filesUri: files[0] })
+  totalStatsResp.value = await invoke('upload_files', { filesUris: filesUri })
   nextTick(() => {
     listenScroll()
   })
@@ -73,7 +74,7 @@ function listenScroll() {
 }
 </script>
 
-<script  lang="ts">
+<script lang="ts">
 export interface UploadProgressResp {
   uploaded_file_numbers: number
   uploaded_file_size: number
@@ -93,8 +94,11 @@ export interface UploadStatsResp {
 <template>
   <div v-if="!totalStatsResp" class="flex flex-col justify-center items-center h-full w-full">
     <template v-if="!triggerUpload">
-      <button class="iw-btn iw-btn-primary self-center" @click="selectFiles">
-        <span>选择文件或文件夹</span>
+      <button class="iw-btn iw-btn-primary self-center w-28" @click="selectFiles(false)">
+        <span>选择文件</span>
+      </button>
+      <button class="iw-btn iw-btn-primary self-center w-28 mt-1" @click="selectFiles(true)">
+        <span>选择文件夹</span>
       </button>
       <span class="text-sm mt-1">文件冲突处理：{{ props.upload.overwrite ? "覆盖" : "跳过" }}</span>
     </template>
@@ -108,18 +112,21 @@ export interface UploadStatsResp {
   </div>
   <div v-else class="flex flex-col h-full w-full">
     <div class="flex justify-center p-1 border-b border-b-base-300">
-      <span class="font-bold" title="已上传文件数"> {{ uploadedStatsResp!.total_file_numbers }}</span> / <span class="font-bold" title="总文件数"> {{ totalStatsResp!.total_file_numbers }}</span> &nbsp; | &nbsp;
-      <span class="font-bold" title="已上传大小"> {{ (uploadedStatsResp!.total_file_size / 1024 / 1024).toFixed(2) }}</span> / <span class="font-bold" title="总大小"> {{ (totalStatsResp!.total_file_size / 1024 / 1024).toFixed(2) }}</span> MB
+      <span class="font-bold" title="已上传文件数"> {{ uploadedStatsResp!.total_file_numbers }}</span> / <span
+        class="font-bold" title="总文件数"> {{ totalStatsResp!.total_file_numbers }}</span> &nbsp; | &nbsp;
+      <span class="font-bold" title="已上传大小"> {{ (uploadedStatsResp!.total_file_size / 1024 / 1024).toFixed(2) }}</span>
+      /
+      <span class="font-bold" title="总大小"> {{ (totalStatsResp!.total_file_size / 1024 / 1024).toFixed(2) }}</span> MB
     </div>
     <div ref="progressRef" class="flex-1 overflow-auto text-sm" />
   </div>
 </template>
 
 <style>
-.uploading{
+.uploading {
   @apply text-primary;
 
-  i{
+  i {
     @apply text-info;
   }
 }

@@ -3,7 +3,7 @@ use std::time::Duration;
 use serde::{Deserialize, Serialize};
 use tardis::{
     basic::result::TardisResult,
-    tokio::{spawn, time::sleep},
+    tokio::{fs::{read_dir, File}, spawn, time::sleep},
 };
 use tauri::{Manager, Window};
 
@@ -20,6 +20,13 @@ pub struct UploadFileInfo {
     pub full_name: String,
     pub size: u64,
 }
+#[derive(Debug, Serialize, Deserialize, Clone,PartialEq, Eq,Hash)]
+pub enum  UploadFileInfoFiled{
+    Name,
+    FullName,
+    Size,
+    MimeType,
+}
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct UploadStatsResp {
@@ -27,7 +34,22 @@ pub struct UploadStatsResp {
     pub total_file_size: u64,
 }
 
-pub async fn upload_files(files_uri: &str, window: Window) -> TardisResult<UploadStatsResp> {
+pub async fn upload_files(files_uris: Vec<String>, window: Window) -> TardisResult<UploadStatsResp> {
+  let param=crate::get_params();
+  if let Some(upload) = param.upload {
+    for file_uri in &files_uris {
+      let file=File::open(file_uri).await.expect("can't open file!");
+      if file.metadata().await.unwrap().is_file() {
+      log::info!("file===={:?}",file.metadata().await);
+      }else {
+      let mut dir=read_dir(file_uri).await.expect("can't open dir");
+      while let Some(d) = dir.next_entry().await.unwrap(){
+        log::info!("d===={:?}",d.metadata().await);
+      }
+      }
+    }
+  
+  }
     // Mock
     sleep(Duration::from_secs(1)).await;
     let total_file_numbers = 10000;

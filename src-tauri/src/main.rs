@@ -3,7 +3,8 @@
 use log::info;
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
-use std::{env, sync::Mutex};
+use serde_json::Value;
+use std::{collections::HashMap, env, sync::Mutex};
 use tardis::{basic::result::TardisResult, tokio, TardisFuns};
 mod tauri;
 mod uploader;
@@ -14,6 +15,10 @@ pub static PARAMS: Lazy<Mutex<FileProcessParams>> = Lazy::new(|| {
         upload: None,
     })
 });
+
+fn get_params() -> FileProcessParams {
+  (*PARAMS.lock().unwrap()).clone()
+}
 
 #[tokio::main]
 async fn main() -> TardisResult<()> {
@@ -44,12 +49,7 @@ async fn main() -> TardisResult<()> {
         let mut params_set = PARAMS.lock().unwrap();
         *params_set = FileProcessParams {
             title: "请按使用文档调用（以下为示例）".to_string(),
-            upload: Some(FileUploadProcessParams {
-                target_kind_key: "".to_string(),
-                target_obj_key: "".to_string(),
-                overwrite: false,
-                upload_metadata_url: "".to_string(),
-            }),
+            upload: Some(FileUploadProcessParams {target_kind_key:"".to_string(),target_obj_key:"".to_string(),overwrite:false,upload_metadata_url:"".to_string(), upload_metadata_rename_filed: None, upload_fixed_metadata: None }),
         };
     }
 
@@ -73,5 +73,9 @@ pub struct FileUploadProcessParams {
     pub target_kind_key: String,
     pub target_obj_key: String,
     pub overwrite: bool,
+    // must be post
     pub upload_metadata_url: String,
+    pub upload_metadata_rename_filed: Option<HashMap<uploader::UploadFileInfoFiled,String>>,
+    // fixed upload filed
+    pub upload_fixed_metadata:Option<HashMap<String,Value>>,
 }

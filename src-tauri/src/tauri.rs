@@ -8,9 +8,9 @@ use tauri::{Manager, Window};
 use tauri_plugin_log::{Target, TargetKind};
 
 #[tauri::command]
-async fn upload_files(files_uri: &str, window: Window) -> TardisResult<UploadStatsResp> {
-    info!("upload_files: {}", files_uri);
-    uploader::upload_files(files_uri, window).await
+async fn upload_files(files_uris: Vec<String>, window: Window) -> TardisResult<UploadStatsResp> {
+    info!("upload_files: {:?}", files_uris);
+    uploader::upload_files(files_uris, window).await
 }
 
 #[tauri::command]
