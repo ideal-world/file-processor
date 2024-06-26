@@ -28,7 +28,7 @@ pub fn build() {
 
             let new_x = screen_size.width - window_size.width;
             // 非精确计算任务栏高度，否则需要引用winapi
-            let new_y = screen_size.height- 80 - window_size.height;
+            let new_y = screen_size.height - 80 - window_size.height;
 
             window
                 .set_position(tauri::Position::Physical((new_x, new_y).into()))
