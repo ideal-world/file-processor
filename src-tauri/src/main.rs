@@ -52,11 +52,10 @@ async fn main() -> TardisResult<()> {
         };
     }
 
+    let config = TardisConfig::init(Some("config")).await?;
+    TardisFuns::init_conf(config).await?;
+
     tauri::build();
-
-    TardisFuns::init(Some("config")).await?;
-
-    info!("started program.");
 
     Ok(())
 }
