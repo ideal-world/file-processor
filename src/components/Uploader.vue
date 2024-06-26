@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { invoke } from '@tauri-apps/api/core'
 import { listen } from '@tauri-apps/api/event'
+import type { FileResponse } from '@tauri-apps/plugin-dialog'
 import { message, open } from '@tauri-apps/plugin-dialog'
 import { debug, info } from '@tauri-apps/plugin-log'
 import { nextTick, ref } from 'vue'
@@ -50,7 +51,7 @@ async function selectFiles(is_dir: boolean) {
     return
   }
   triggerUpload.value = true
-  const filesUri = is_dir ? files : files.map((v, i, a) => v.path)
+  const filesUri = is_dir ? files : files.map((v: FileResponse) => v.path)
   info(`upload file from :${JSON.stringify(filesUri)}`)
   uploadedStatsResp.value = {
     total_file_numbers: 0,
