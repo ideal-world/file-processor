@@ -51,6 +51,7 @@ async fn main() -> TardisResult<()> {
         };
     }
 
+    // Debug时需要改为 ``src-tauri/config``
     let config = TardisConfig::init(Some("config")).await?;
     TardisFuns::init_conf(config).await?;
 
