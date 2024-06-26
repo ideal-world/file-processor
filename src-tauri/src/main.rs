@@ -2,9 +2,11 @@
 
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
-use std::{collections::HashMap, env, sync::Mutex};
-use tardis::{basic::result::TardisResult, log::info, tokio, TardisFuns};
+use std::{env, sync::Mutex};
+use tardis::{
+    basic::result::TardisResult, config::config_dto::TardisConfig,
+    crypto::crypto_base64::TardisCryptoBase64, log::info, tokio, TardisFuns,
+};
 mod tauri;
 mod uploader;
 
@@ -32,13 +34,9 @@ async fn main() -> TardisResult<()> {
         if raw_params.ends_with("/") {
             raw_params = &raw_params[..raw_params.len() - 1];
         }
+        let base64 = TardisCryptoBase64 {};
         let params = TardisFuns::json
-            .str_to_obj::<FileProcessParams>(
-                &TardisFuns::crypto
-                    .base64
-                    .decode_to_string(raw_params)
-                    .unwrap(),
-            )
+            .str_to_obj::<FileProcessParams>(base64.decode_to_string(raw_params).unwrap().as_str())
             .unwrap();
         info!("params: {:?}", params);
         let mut params_set = PARAMS.lock().unwrap();
@@ -59,11 +57,11 @@ async fn main() -> TardisResult<()> {
         };
     }
 
+    // Debug时需要改为 ``src-tauri/config``
+    let config = TardisConfig::init(Some("config")).await?;
+    TardisFuns::init_conf(config).await?;
+
     tauri::build();
-
-    TardisFuns::init(Some("config")).await?;
-
-    info!("started program.");
 
     Ok(())
 }

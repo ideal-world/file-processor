@@ -1373,6 +1373,7 @@ dependencies = [
 name = "file-processor"
 version = "0.1.0"
 dependencies = [
+ "log",
  "mime-infer",
  "once_cell",
  "serde",
@@ -4628,9 +4629,9 @@ checksum = "55937e1799185b12863d447f42597ed69d9928686b8d88a1df17376a097d8369"
 
 [[package]]
 name = "tardis"
-version = "0.1.0-rc.15"
+version = "0.1.0-rc.16"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8f24644749bd2aa8e7b7a5a0d83e128cebcddfd21004b90ad6d94bd942aec03f"
+checksum = "38132bab54e10c76e245119c8d7127556aac6734b1c9451907f9edfff2817b2d"
 dependencies = [
  "aead",
  "aes",
