@@ -2,7 +2,8 @@ use crate::{
     uploader::{self, UploadStatsResp},
     FileProcessParams, PARAMS,
 };
-use tardis::{basic::result::TardisResult, log::info};
+use log::info;
+use tardis::basic::result::TardisResult;
 use tauri::{Manager, Window};
 use tauri_plugin_log::{Target, TargetKind};
 
@@ -27,7 +28,7 @@ pub fn build() {
 
             let new_x = screen_size.width - window_size.width;
             // 非精确计算任务栏高度，否则需要引用winapi
-            let new_y = screen_size.height- 80 - window_size.height;
+            let new_y = screen_size.height - 80 - window_size.height;
 
             window
                 .set_position(tauri::Position::Physical((new_x, new_y).into()))
