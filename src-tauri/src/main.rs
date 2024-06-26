@@ -81,7 +81,7 @@ pub struct FileUploadProcessParams {
     pub overwrite: bool,
     // must be post
     pub upload_metadata_url: String,
-    pub upload_metadata_rename_filed: Option<HashMap<uploader::UploadFileInfoFiled, String>>,
+    pub upload_metadata_rename_filed: Option<uploader::UploadMapFiled>,
     // fixed upload filed
     pub upload_fixed_metadata: Option<HashMap<String, Value>>,
 }
