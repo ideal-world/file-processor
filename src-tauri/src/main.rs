@@ -1,11 +1,10 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-use log::info;
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::{collections::HashMap, env, sync::Mutex};
-use tardis::{basic::result::TardisResult, tokio, TardisFuns};
+use tardis::{basic::result::TardisResult, log::info, tokio, TardisFuns};
 mod tauri;
 mod uploader;
 

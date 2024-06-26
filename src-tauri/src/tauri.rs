@@ -2,8 +2,7 @@ use crate::{
     uploader::{self, UploadStatsResp},
     FileProcessParams, PARAMS,
 };
-use log::info;
-use tardis::basic::result::TardisResult;
+use tardis::{basic::result::TardisResult, log::info};
 use tauri::{Manager, Window};
 use tauri_plugin_log::{Target, TargetKind};
 
