@@ -54,6 +54,7 @@ async fn main() -> TardisResult<()> {
                 upload_metadata_url: "".to_string(),
                 upload_metadata_rename_filed: None,
                 upload_fixed_metadata: None,
+                upload_fixed_headers: None,
             }),
         };
     }
@@ -83,4 +84,6 @@ pub struct FileUploadProcessParams {
     pub upload_metadata_rename_filed: Option<uploader::UploadMapFiled>,
     // fixed upload filed
     pub upload_fixed_metadata: Option<HashMap<String, Value>>,
+    // fixed upload headers
+    pub upload_fixed_headers: Option<HashMap<String, String>>,
 }

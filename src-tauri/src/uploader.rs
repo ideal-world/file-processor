@@ -2,6 +2,7 @@ use std::{
     collections::HashMap,
     os::unix::fs::MetadataExt,
     path::{Path, PathBuf},
+    sync::Arc,
     time::Duration,
 };
 
@@ -10,27 +11,31 @@ use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use tardis::{
     basic::{error::TardisError, result::TardisResult},
-    futures::{future::BoxFuture, FutureExt as _},
+    futures::{future::BoxFuture, stream, FutureExt as _, StreamExt as _, TryFutureExt},
+    rand::random,
     tokio::{
         fs::{read_dir, File},
         spawn,
+        sync::{mpsc, Semaphore},
         time::sleep,
     },
     web::reqwest,
+    TardisFuns, TardisFunsInst,
 };
-use tauri::Window;
+use tauri::{Manager as _, Window};
 
 use crate::FileUploadProcessParams;
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct UploadProgressResp {
-    pub uploaded_file_numbers: u32,
+    pub uploaded_file_numbers: usize,
     pub uploaded_file_size: u64,
     pub current_files: Vec<UploadFileInfo>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct UploadFileInfo {
+    pub id: String,
     pub name: String,
     // Relative path
     pub relative_path: PathBuf,
@@ -74,7 +79,7 @@ impl UploadFileInfo {
             UploadFileInfoFiled::MimeType => json!(self.mime_type),
         }
     }
-    fn to_body(self, config: &FileUploadProcessParams) -> TardisResult<reqwest::Body> {
+    fn to_body(self, config: &FileUploadProcessParams) -> TardisResult<Value> {
         let mut value = json!({});
         if let Some(map_filed) = &config.upload_metadata_rename_filed {
             for filed in UploadFileInfoFiled::get_all() {
@@ -103,15 +108,13 @@ impl UploadFileInfo {
             }
         }
 
-        Ok(reqwest::Body::from(serde_json::to_string(&value).map_err(
-            |e| TardisError::io_error(&format!("value serde failed: {e}"), ""),
-        )?))
+        Ok(value)
     }
 }
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct UploadStatsResp {
-    pub total_file_numbers: u32,
+    pub total_file_numbers: usize,
     pub total_file_size: u64,
 }
 
@@ -119,15 +122,17 @@ pub async fn upload_files(
     files_uris: Vec<String>,
     window: Window,
 ) -> TardisResult<UploadStatsResp> {
+    let mut total_file_numbers = 0;
+    let mut total_file_size: u64 = 0;
+
     let param = crate::get_params();
-    info!("param======:{param:?}");
     if let Some(upload) = param.upload {
+        let mut files = Vec::new();
         for file_uri in files_uris {
             let origin_path = PathBuf::from(&file_uri);
             let base_path = origin_path.parent().unwrap_or(Path::new(""));
             let paths = get_files(&file_uri).await?;
             for path in paths {
-                info!("path======:{path:?}");
                 let mime_type = mime_infer::from_path(path.clone()).first_or_text_plain();
                 let file = File::open(path.clone())
                     .await
@@ -144,19 +149,95 @@ pub async fn upload_files(
                     relative_path: relative_path.to_path_buf(),
                     size: file.metadata().await?.size(),
                     mime_type: mime_type.to_string(),
+                    id: random::<u64>().to_string(),
                 };
-                let body = info.to_body(&upload)?;
-                info!(
-                    "file====body:{}",
-                    String::from_utf8(body.as_bytes().unwrap().to_vec()).unwrap()
-                );
+
+                files.push((file, info));
             }
         }
+        total_file_numbers = files.len();
+        total_file_size = stream::iter(&files)
+            .then(|(file, _)| get_metadata_size(file))
+            .collect::<Vec<u64>>()
+            .await
+            .into_iter()
+            .sum();
+
+        spawn(async move {
+            let mut uploaded_file_numbers = 0;
+            let mut uploaded_file_size = 0;
+
+            let (tx, mut rx) = mpsc::channel(50);
+            let max_concurrent_tasks = 2;
+            let semaphore = Arc::new(Semaphore::new(max_concurrent_tasks));
+
+            for (file, info) in files {
+                let n_tx = tx.clone();
+                let config = upload.clone();
+                let semaphore = semaphore.clone();
+
+                spawn(async move {
+                    let permit = semaphore.acquire_owned().await.unwrap();
+                    let _ = n_tx.send((false, info.clone())).await;
+                    let body = info.clone().to_body(&config).unwrap();
+                    info!("file====body:{}", body);
+                    let a = TardisFuns::web_client()
+                        .post_obj_to_str(
+                            config.upload_metadata_url,
+                            &body,
+                            config.upload_fixed_headers.unwrap_or_default(),
+                        )
+                        .await;
+                    //todo remove mock
+                    sleep(Duration::from_secs(2)).await;
+                    let _ = n_tx.send((true, info.clone())).await;
+                    drop(permit);
+                });
+            }
+
+            let mut current_files_map = HashMap::new();
+            while let Some((is_done, i)) = rx.recv().await {
+                if uploaded_file_numbers == total_file_numbers {
+                    break;
+                }
+                if is_done {
+                    current_files_map.remove(&i.id);
+                } else {
+                    uploaded_file_numbers += 1;
+                    uploaded_file_size += i.size;
+                    current_files_map.insert(i.id.clone(), i);
+                }
+
+                window
+                    .emit(
+                        "upload-progress",
+                        UploadProgressResp {
+                            uploaded_file_numbers,
+                            uploaded_file_size,
+                            current_files: current_files_map
+                                .iter()
+                                .map(|(_, info)| info.clone())
+                                .collect(),
+                        },
+                    )
+                    .unwrap();
+            }
+
+            window
+                .emit(
+                    "upload-progress",
+                    UploadProgressResp {
+                        uploaded_file_numbers: total_file_numbers,
+                        uploaded_file_size: total_file_size,
+                        current_files: vec![],
+                    },
+                )
+                .unwrap();
+        });
     }
     // Mock
-    sleep(Duration::from_secs(1)).await;
-    let total_file_numbers = 10000;
-    let total_file_size = 102410000;
+    // sleep(Duration::from_secs(1)).await;
+
     // spawn(async move {
     //     let mut uploaded_file_numbers = 0;
     //     let mut uploaded_file_size = 0;
@@ -206,6 +287,10 @@ pub async fn upload_files(
         total_file_numbers: total_file_numbers,
         total_file_size: total_file_size,
     })
+}
+
+async fn get_metadata_size(file: &File) -> u64 {
+    file.metadata().await.map(|md| md.len()).unwrap_or_default()
 }
 
 fn get_files<'a>(files_uri: &'a str) -> BoxFuture<'a, TardisResult<Vec<PathBuf>>> {

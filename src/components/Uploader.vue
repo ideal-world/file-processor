@@ -4,7 +4,7 @@ import { listen } from '@tauri-apps/api/event'
 import type { FileResponse } from '@tauri-apps/plugin-dialog'
 import { message, open } from '@tauri-apps/plugin-dialog'
 import { debug, info } from '@tauri-apps/plugin-log'
-import { nextTick, ref } from 'vue'
+import { nextTick, onMounted, ref } from 'vue'
 import type { FileUploadProcessParams } from '../App.vue'
 
 const props = defineProps<{
@@ -14,6 +14,7 @@ const props = defineProps<{
 const totalStatsResp = ref<UploadStatsResp | null>(null)
 const uploadedStatsResp = ref<UploadStatsResp | null>(null)
 const progressRef = ref<HTMLElement>()
+const uploadIdRef = ref<string[]>([])
 const triggerUpload = ref<boolean>(false)
 const isUserScrolling = ref<boolean>(false)
 
@@ -25,21 +26,30 @@ async function init() {
       total_file_numbers: progressResp.uploaded_file_numbers,
       total_file_size: progressResp.uploaded_file_size,
     }
+
+    const ids = progressResp.current_files.map(v => v.id)
     progressRef.value!.querySelectorAll('.uploading').forEach((el) => {
-      el.classList.remove('uploading')
-      el.childNodes[1].textContent = '已上传'
+      if (!ids.includes(el.id)) {
+        el.classList.remove('uploading')
+        el.childNodes[1].textContent = '已上传'
+      }
     })
     progressResp.current_files.forEach((file) => {
-      const fileDiv = document.createElement('div')
-      fileDiv.innerHTML = `<span class='uploading'>${file.full_name} (${(file.size / 1024).toFixed(2)}KB) &nbsp; <i>上传中...</i></span>`
-      progressRef.value!.appendChild(fileDiv)
-      if (!isUserScrolling.value) {
-        progressRef.value!.scrollTop = progressRef.value!.scrollHeight
+      if (!uploadIdRef.value!.includes(file.id)) {
+        uploadIdRef.value!.push(file.id)
+        const fileDiv = document.createElement('div')
+        fileDiv.innerHTML = `<span id='${file.id}' class='uploading'>${file.relative_path} (${(file.size / 1024).toFixed(2)}KB) &nbsp; <i>上传中...</i></span>`
+        progressRef.value!.appendChild(fileDiv)
+        if (!isUserScrolling.value) {
+          progressRef.value!.scrollTop = progressRef.value!.scrollHeight
+        }
       }
     })
   })
 }
-init()
+onMounted(() => {
+  init()
+})
 
 async function selectFiles(is_dir: boolean) {
   const files = await open({
@@ -82,8 +92,9 @@ export interface UploadProgressResp {
   current_files: UploadFileInfo[]
 }
 export interface UploadFileInfo {
+  id: string
   name: string
-  full_name: string
+  relative_path: string
   size: number
 }
 export interface UploadStatsResp {
