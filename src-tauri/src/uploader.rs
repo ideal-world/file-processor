@@ -5,12 +5,12 @@ use std::{
     time::Duration,
 };
 
+use log::info;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use tardis::{
     basic::{error::TardisError, result::TardisResult},
     futures::{future::BoxFuture, FutureExt as _},
-    log::info,
     tokio::{
         fs::{read_dir, File},
         spawn,
@@ -120,12 +120,14 @@ pub async fn upload_files(
     window: Window,
 ) -> TardisResult<UploadStatsResp> {
     let param = crate::get_params();
+    info!("param======:{param:?}");
     if let Some(upload) = param.upload {
         for file_uri in files_uris {
             let origin_path = PathBuf::from(&file_uri);
             let base_path = origin_path.parent().unwrap_or(Path::new(""));
             let paths = get_files(&file_uri).await?;
             for path in paths {
+                info!("path======:{path:?}");
                 let mime_type = mime_infer::from_path(path.clone()).first_or_text_plain();
                 let file = File::open(path.clone())
                     .await
@@ -144,7 +146,10 @@ pub async fn upload_files(
                     mime_type: mime_type.to_string(),
                 };
                 let body = info.to_body(&upload)?;
-                info!("file====body:{body:?}");
+                info!(
+                    "file====body:{}",
+                    String::from_utf8(body.as_bytes().unwrap().to_vec()).unwrap()
+                );
             }
         }
     }
