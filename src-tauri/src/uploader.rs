@@ -11,7 +11,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use tardis::{
     basic::{error::TardisError, result::TardisResult},
-    futures::{future::BoxFuture, stream, FutureExt as _, StreamExt as _, TryFutureExt},
+    futures::{future::BoxFuture, stream, FutureExt as _, StreamExt as _},
     rand::random,
     tokio::{
         fs::{read_dir, File},
@@ -20,7 +20,7 @@ use tardis::{
         time::sleep,
     },
     web::reqwest,
-    TardisFuns, TardisFunsInst,
+    TardisFuns,
 };
 use tauri::{Manager as _, Window};
 
@@ -215,8 +215,8 @@ pub async fn upload_files(
             }
 
             let mut current_files_map = HashMap::new();
-            let mut fail_files = Vec::new();
             while let Some(((is_done, is_success), i)) = rx.recv().await {
+                let mut fail_files = Vec::new();
                 if uploaded_file_numbers == total_file_numbers {
                     break;
                 }
