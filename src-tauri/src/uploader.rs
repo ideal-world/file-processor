@@ -31,6 +31,7 @@ pub struct UploadProgressResp {
     pub uploaded_file_numbers: usize,
     pub uploaded_file_size: u64,
     pub current_files: Vec<UploadFileInfo>,
+    pub fail_files: Vec<UploadFileInfo>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -167,6 +168,8 @@ pub async fn upload_files(
             let mut uploaded_file_numbers = 0;
             let mut uploaded_file_size = 0;
 
+            // first boolean means end(true)/start
+            // seconde boolean is success(true)/fail
             let (tx, mut rx) = mpsc::channel(50);
             let max_concurrent_tasks = 2;
             let semaphore = Arc::new(Semaphore::new(max_concurrent_tasks));
@@ -178,30 +181,50 @@ pub async fn upload_files(
 
                 spawn(async move {
                     let permit = semaphore.acquire_owned().await.unwrap();
-                    let _ = n_tx.send((false, info.clone())).await;
+                    let _ = n_tx.send(((false, false), info.clone())).await;
                     let body = info.clone().to_body(&config).unwrap();
                     info!("file====body:{}", body);
-                    let a = TardisFuns::web_client()
+                    if let Ok(upload_metadata_result) = TardisFuns::web_client()
                         .post_obj_to_str(
                             config.upload_metadata_url,
                             &body,
                             config.upload_fixed_headers.unwrap_or_default(),
                         )
-                        .await;
+                        .await
+                    {
+                        info!("upload_metadata_result=====:{:?}", upload_metadata_result);
+                        if upload_metadata_result.code == 200 {
+                            if let Some(upload_url) = upload_metadata_result.body {
+                                let stream = tokio_util::codec::FramedRead::new(
+                                    file,
+                                    tokio_util::codec::BytesCodec::new(),
+                                );
+                                let body = reqwest::Body::wrap_stream(stream);
+                                let client = reqwest::Client::new();
+                                let _ = client.post(upload_url).body(body).send().await;
+                                let _ = n_tx.send(((true, true), info.clone())).await;
+                                return;
+                            }
+                        }
+                    };
                     //todo remove mock
                     sleep(Duration::from_secs(2)).await;
-                    let _ = n_tx.send((true, info.clone())).await;
+                    let _ = n_tx.send(((true, false), info.clone())).await;
                     drop(permit);
                 });
             }
 
             let mut current_files_map = HashMap::new();
-            while let Some((is_done, i)) = rx.recv().await {
+            let mut fail_files = Vec::new();
+            while let Some(((is_done, is_success), i)) = rx.recv().await {
                 if uploaded_file_numbers == total_file_numbers {
                     break;
                 }
                 if is_done {
                     current_files_map.remove(&i.id);
+                    if !is_success {
+                        fail_files.push(i)
+                    }
                 } else {
                     uploaded_file_numbers += 1;
                     uploaded_file_size += i.size;
@@ -218,6 +241,7 @@ pub async fn upload_files(
                                 .iter()
                                 .map(|(_, info)| info.clone())
                                 .collect(),
+                            fail_files,
                         },
                     )
                     .unwrap();
@@ -230,64 +254,20 @@ pub async fn upload_files(
                         uploaded_file_numbers: total_file_numbers,
                         uploaded_file_size: total_file_size,
                         current_files: vec![],
+                        fail_files: Vec::new(),
                     },
                 )
                 .unwrap();
         });
     }
-    // Mock
-    // sleep(Duration::from_secs(1)).await;
-
-    // spawn(async move {
-    //     let mut uploaded_file_numbers = 0;
-    //     let mut uploaded_file_size = 0;
-    //     loop {
-    //         if uploaded_file_numbers >= total_file_numbers {
-    //             window
-    //                 .emit(
-    //                     "upload-progress",
-    //                     UploadProgressResp {
-    //                         uploaded_file_numbers: total_file_numbers,
-    //                         uploaded_file_size: total_file_size,
-    //                         current_files: vec![],
-    //                     },
-    //                 )
-    //                 .unwrap();
-    //             break;
-    //         }
-    //         sleep(Duration::from_millis(1000)).await;
-    //         let current_files = vec![
-    //             UploadFileInfo {
-    //                 name: format!("file{}", uploaded_file_numbers + 1),
-    //                 relative_path: format!("a/b/file{}", uploaded_file_numbers + 1),
-    //                 size: 1024,
-    //             },
-    //             UploadFileInfo {
-    //                 name: format!("file{}", uploaded_file_numbers + 2),
-    //                 relative_path: format!("a/b/file{}", uploaded_file_numbers + 2),
-    //                 size: 1024,
-    //             },
-    //         ];
-    //         window
-    //             .emit(
-    //                 "upload-progress",
-    //                 UploadProgressResp {
-    //                     uploaded_file_numbers,
-    //                     uploaded_file_size,
-    //                     current_files,
-    //                 },
-    //             )
-    //             .unwrap();
-    //         uploaded_file_numbers += 2;
-    //         uploaded_file_size += 2048;
-    //     }
-    // });
 
     Ok(UploadStatsResp {
         total_file_numbers: total_file_numbers,
         total_file_size: total_file_size,
     })
 }
+
+// async fn backend_task()-
 
 async fn get_metadata_size(file: &File) -> u64 {
     file.metadata().await.map(|md| md.len()).unwrap_or_default()

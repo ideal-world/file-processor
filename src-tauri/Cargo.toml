@@ -35,3 +35,5 @@ tauri-plugin-deep-link = "2.0.0-beta"
 tauri-plugin-log = "2.0.0-beta"
 mime-infer = "3.0.0"
 log = "0.4"
+reqwest = "0.12.5"
+tokio-util = { version = "0.7", features = ["codec"] }

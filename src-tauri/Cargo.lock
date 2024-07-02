@@ -1376,6 +1376,7 @@ dependencies = [
  "log",
  "mime-infer",
  "once_cell",
+ "reqwest",
  "serde",
  "serde_json",
  "tardis",
@@ -1385,6 +1386,7 @@ dependencies = [
  "tauri-plugin-dialog",
  "tauri-plugin-log",
  "tauri-plugin-shell",
+ "tokio-util",
 ]
 
 [[package]]
