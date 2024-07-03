@@ -3,7 +3,6 @@ use std::{
     os::unix::fs::MetadataExt,
     path::{Path, PathBuf},
     sync::Arc,
-    time::Duration,
 };
 
 use log::info;
@@ -15,9 +14,9 @@ use tardis::{
     rand::random,
     tokio::{
         fs::{read_dir, File},
+        io::AsyncReadExt,
         spawn,
         sync::{mpsc, Semaphore},
-        time::sleep,
     },
     web::reqwest,
     TardisFuns,
@@ -191,7 +190,7 @@ async fn backend_task(
     let max_concurrent_tasks = 2;
     let semaphore = Arc::new(Semaphore::new(max_concurrent_tasks));
 
-    for (file, info) in files {
+    for (mut file, info) in files {
         let n_tx = tx.clone();
         let config = config.clone();
         let semaphore = semaphore.clone();
@@ -212,20 +211,24 @@ async fn backend_task(
                 info!("upload_metadata_result=====:{:?}", upload_metadata_result);
                 if upload_metadata_result.code == 200 {
                     if let Some(upload_url) = upload_metadata_result.body {
-                        let stream = tokio_util::codec::FramedRead::new(
-                            file,
-                            tokio_util::codec::BytesCodec::new(),
-                        );
-                        let body = reqwest::Body::wrap_stream(stream);
+                        info!("upload_url=====:{:?}", upload_url);
+                        // let stream = tokio_util::codec::FramedRead::new(
+                        //     file,
+                        //     tokio_util::codec::BytesCodec::new(),
+                        // );
+                        // let body = reqwest::Body::wrap_stream(stream);
+                        // let file_part = reqwest::multipart::Part::stream(file);
+                        // let form = reqwest::multipart::Form::new().part("", file_part);
+                        let mut content = vec![];
+                        let _=file.read_to_end(&mut content).await;
                         let client = reqwest::Client::new();
-                        let _ = client.post(upload_url).body(body).send().await;
-                        let _ = n_tx.send(((true, true), info.clone())).await;
-                        return;
+                        if let Ok(_) = client.put(upload_url).body(content).send().await {
+                            let _ = n_tx.send(((true, true), info.clone())).await;
+                            return;
+                        }
                     }
                 }
             };
-            //todo remove mock
-            sleep(Duration::from_secs(2)).await;
             let _ = n_tx.send(((true, false), info.clone())).await;
             drop(permit);
         });

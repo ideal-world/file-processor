@@ -27,11 +27,16 @@ async function init() {
       total_file_size: progressResp.uploaded_file_size,
     }
 
-    const ids = progressResp.current_files.map(v => v.id)
+    const current_ids = progressResp.current_files.map(v => v.id)
+    const fail_ids = progressResp.fail_files.map(v => v.id)
     progressRef.value!.querySelectorAll('.uploading').forEach((el) => {
-      if (!ids.includes(el.id)) {
+      if (!current_ids.includes(el.id)) {
         el.classList.remove('uploading')
         el.childNodes[1].textContent = '已上传'
+      }
+      if (fail_ids.includes(el.id)) {
+        el.classList.remove('uploading')
+        el.childNodes[1].textContent = '失败'
       }
     })
     progressResp.current_files.forEach((file) => {
@@ -90,6 +95,7 @@ export interface UploadProgressResp {
   uploaded_file_numbers: number
   uploaded_file_size: number
   current_files: UploadFileInfo[]
+  fail_files: UploadFileInfo[]
 }
 export interface UploadFileInfo {
   id: string
