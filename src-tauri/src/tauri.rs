@@ -1,10 +1,15 @@
+use std::env;
+
 use crate::{
     uploader::{self, UploadStatsResp},
     FileProcessParams, PARAMS,
 };
 use log::info;
-use tardis::basic::result::TardisResult;
-use tauri::{Manager, Window};
+use tardis::{
+    basic::result::TardisResult, config::config_dto::TardisConfig,
+    crypto::crypto_base64::TardisCryptoBase64, futures::executor, TardisFuns,
+};
+use tauri::{path::BaseDirectory, Manager, Window};
 use tauri_plugin_log::{Target, TargetKind};
 
 #[tauri::command]
@@ -18,9 +23,49 @@ async fn get_params() -> TardisResult<FileProcessParams> {
     Ok((*PARAMS.lock().unwrap()).clone())
 }
 
+fn set_params(params: FileProcessParams) -> TardisResult<()> {
+    let mut params_set = PARAMS.lock().unwrap();
+    *params_set = params;
+    Ok(())
+}
+
 pub fn build() {
     tauri::Builder::default()
         .setup(|app| {
+            //macos use this way to init config
+            #[cfg(target_os = "macos")]
+            {
+                let config_path = app
+                    .path()
+                    .resolve("config", BaseDirectory::Resource)
+                    .expect("get resource path err!");
+                executor::block_on(async {
+                    let config_path = config_path.strip_prefix("/").unwrap();
+                    let config = TardisConfig::init(Some(config_path.to_str().unwrap()))
+                        .await
+                        .expect("can't find config");
+                    info!("====config:{config:?}");
+                    TardisFuns::init_conf(config)
+                        .await
+                        .expect("can't init config");
+                });
+                app.listen("deep-link://new-url", |url| {
+                    let urls: Vec<tauri::Url> = serde_json::from_str(url.payload()).unwrap();
+                    if let Some(url) = urls.get(0) {
+                        let base64 = TardisCryptoBase64 {};
+                        let params = TardisFuns::json
+                            .str_to_obj::<FileProcessParams>(
+                                base64
+                                    .decode_to_string(url.host_str().unwrap())
+                                    .unwrap()
+                                    .as_str(),
+                            )
+                            .unwrap();
+                        info!("params: {:?}", params);
+                        let _ = set_params(params);
+                    }
+                });
+            }
             let window = app.get_webview_window("main").unwrap();
             let current_monitor = window.current_monitor().unwrap().unwrap();
             let screen_size = current_monitor.size();

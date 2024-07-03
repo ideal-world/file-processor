@@ -165,99 +165,7 @@ pub async fn upload_files(
             .sum();
 
         spawn(async move {
-            let mut uploaded_file_numbers = 0;
-            let mut uploaded_file_size = 0;
-
-            // first boolean means end(true)/start
-            // seconde boolean is success(true)/fail
-            let (tx, mut rx) = mpsc::channel(50);
-            let max_concurrent_tasks = 2;
-            let semaphore = Arc::new(Semaphore::new(max_concurrent_tasks));
-
-            for (file, info) in files {
-                let n_tx = tx.clone();
-                let config = upload.clone();
-                let semaphore = semaphore.clone();
-
-                spawn(async move {
-                    let permit = semaphore.acquire_owned().await.unwrap();
-                    let _ = n_tx.send(((false, false), info.clone())).await;
-                    let body = info.clone().to_body(&config).unwrap();
-                    info!("file====body:{}", body);
-                    if let Ok(upload_metadata_result) = TardisFuns::web_client()
-                        .post_obj_to_str(
-                            config.upload_metadata_url,
-                            &body,
-                            config.upload_fixed_headers.unwrap_or_default(),
-                        )
-                        .await
-                    {
-                        info!("upload_metadata_result=====:{:?}", upload_metadata_result);
-                        if upload_metadata_result.code == 200 {
-                            if let Some(upload_url) = upload_metadata_result.body {
-                                let stream = tokio_util::codec::FramedRead::new(
-                                    file,
-                                    tokio_util::codec::BytesCodec::new(),
-                                );
-                                let body = reqwest::Body::wrap_stream(stream);
-                                let client = reqwest::Client::new();
-                                let _ = client.post(upload_url).body(body).send().await;
-                                let _ = n_tx.send(((true, true), info.clone())).await;
-                                return;
-                            }
-                        }
-                    };
-                    //todo remove mock
-                    sleep(Duration::from_secs(2)).await;
-                    let _ = n_tx.send(((true, false), info.clone())).await;
-                    drop(permit);
-                });
-            }
-
-            let mut current_files_map = HashMap::new();
-            while let Some(((is_done, is_success), i)) = rx.recv().await {
-                let mut fail_files = Vec::new();
-                if uploaded_file_numbers == total_file_numbers {
-                    break;
-                }
-                if is_done {
-                    current_files_map.remove(&i.id);
-                    if !is_success {
-                        fail_files.push(i)
-                    }
-                } else {
-                    uploaded_file_numbers += 1;
-                    uploaded_file_size += i.size;
-                    current_files_map.insert(i.id.clone(), i);
-                }
-
-                window
-                    .emit(
-                        "upload-progress",
-                        UploadProgressResp {
-                            uploaded_file_numbers,
-                            uploaded_file_size,
-                            current_files: current_files_map
-                                .iter()
-                                .map(|(_, info)| info.clone())
-                                .collect(),
-                            fail_files,
-                        },
-                    )
-                    .unwrap();
-            }
-
-            window
-                .emit(
-                    "upload-progress",
-                    UploadProgressResp {
-                        uploaded_file_numbers: total_file_numbers,
-                        uploaded_file_size: total_file_size,
-                        current_files: vec![],
-                        fail_files: Vec::new(),
-                    },
-                )
-                .unwrap();
+            backend_task(files, total_file_numbers, total_file_size, window, upload).await
         });
     }
 
@@ -267,7 +175,107 @@ pub async fn upload_files(
     })
 }
 
-// async fn backend_task()-
+async fn backend_task(
+    files: Vec<(File, UploadFileInfo)>,
+    total_file_numbers: usize,
+    total_file_size: u64,
+    window: Window,
+    config: FileUploadProcessParams,
+) {
+    let mut uploaded_file_numbers = 0;
+    let mut uploaded_file_size = 0;
+
+    // first boolean means end(true)/start
+    // seconde boolean is success(true)/fail
+    let (tx, mut rx) = mpsc::channel(50);
+    let max_concurrent_tasks = 2;
+    let semaphore = Arc::new(Semaphore::new(max_concurrent_tasks));
+
+    for (file, info) in files {
+        let n_tx = tx.clone();
+        let config = config.clone();
+        let semaphore = semaphore.clone();
+
+        spawn(async move {
+            let permit = semaphore.acquire_owned().await.unwrap();
+            let _ = n_tx.send(((false, false), info.clone())).await;
+            let body = info.clone().to_body(&config).unwrap();
+            info!("file====body:{}", body);
+            if let Ok(upload_metadata_result) = TardisFuns::web_client()
+                .post_obj_to_str(
+                    config.upload_metadata_url,
+                    &body,
+                    config.upload_fixed_headers.unwrap_or_default(),
+                )
+                .await
+            {
+                info!("upload_metadata_result=====:{:?}", upload_metadata_result);
+                if upload_metadata_result.code == 200 {
+                    if let Some(upload_url) = upload_metadata_result.body {
+                        let stream = tokio_util::codec::FramedRead::new(
+                            file,
+                            tokio_util::codec::BytesCodec::new(),
+                        );
+                        let body = reqwest::Body::wrap_stream(stream);
+                        let client = reqwest::Client::new();
+                        let _ = client.post(upload_url).body(body).send().await;
+                        let _ = n_tx.send(((true, true), info.clone())).await;
+                        return;
+                    }
+                }
+            };
+            //todo remove mock
+            sleep(Duration::from_secs(2)).await;
+            let _ = n_tx.send(((true, false), info.clone())).await;
+            drop(permit);
+        });
+    }
+
+    let mut current_files_map = HashMap::new();
+    while let Some(((is_done, is_success), i)) = rx.recv().await {
+        let mut fail_files = Vec::new();
+        if uploaded_file_numbers == total_file_numbers {
+            break;
+        }
+        if is_done {
+            current_files_map.remove(&i.id);
+            if !is_success {
+                fail_files.push(i)
+            }
+        } else {
+            uploaded_file_numbers += 1;
+            uploaded_file_size += i.size;
+            current_files_map.insert(i.id.clone(), i);
+        }
+
+        window
+            .emit(
+                "upload-progress",
+                UploadProgressResp {
+                    uploaded_file_numbers,
+                    uploaded_file_size,
+                    current_files: current_files_map
+                        .iter()
+                        .map(|(_, info)| info.clone())
+                        .collect(),
+                    fail_files,
+                },
+            )
+            .unwrap();
+    }
+
+    window
+        .emit(
+            "upload-progress",
+            UploadProgressResp {
+                uploaded_file_numbers: total_file_numbers,
+                uploaded_file_size: total_file_size,
+                current_files: vec![],
+                fail_files: Vec::new(),
+            },
+        )
+        .unwrap();
+}
 
 async fn get_metadata_size(file: &File) -> u64 {
     file.metadata().await.map(|md| md.len()).unwrap_or_default()

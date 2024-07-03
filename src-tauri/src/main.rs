@@ -5,8 +5,8 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::{collections::HashMap, env, sync::Mutex};
 use tardis::{
-    basic::result::TardisResult, config::config_dto::TardisConfig,
-    crypto::crypto_base64::TardisCryptoBase64, log::info, tokio, TardisFuns,
+    basic::result::TardisResult, crypto::crypto_base64::TardisCryptoBase64, log::info, tokio,
+    TardisFuns,
 };
 mod tauri;
 mod uploader;
@@ -60,8 +60,11 @@ async fn main() -> TardisResult<()> {
     }
 
     // Debug时需要改为 ``src-tauri/config``
-    let config = TardisConfig::init(Some("config")).await?;
-    TardisFuns::init_conf(config).await?;
+    #[cfg(target_os = "windows")]
+    {
+        let config = TardisConfig::init(Some("config")).await?;
+        TardisFuns::init_conf(config).await?;
+    }
 
     tauri::build();
 
