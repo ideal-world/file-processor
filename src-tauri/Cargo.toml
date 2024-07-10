@@ -37,3 +37,4 @@ mime-infer = "3.0.0"
 log = "0.4"
 reqwest = "0.12.5"
 tokio-util = { version = "0.7", features = ["codec"] }
+base64 = { version = "0.22" }

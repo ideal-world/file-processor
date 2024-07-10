@@ -41,6 +41,7 @@ pub struct UploadFileInfo {
     pub relative_path: PathBuf,
     pub size: u64,
     pub mime_type: String,
+    pub overwrite:bool,
 }
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq, Hash)]
 pub enum UploadFileInfoFiled {
@@ -48,6 +49,7 @@ pub enum UploadFileInfoFiled {
     RelativePath,
     Size,
     MimeType,
+    Overwrite,
 }
 impl UploadFileInfoFiled {
     fn get_all() -> Vec<UploadFileInfoFiled> {
@@ -64,6 +66,7 @@ impl UploadFileInfoFiled {
             UploadFileInfoFiled::RelativePath => "relative_path",
             UploadFileInfoFiled::Size => "size",
             UploadFileInfoFiled::MimeType => "mime_type",
+            UploadFileInfoFiled::Overwrite => "overwrite",
         }
     }
 }
@@ -77,6 +80,7 @@ impl UploadFileInfo {
             UploadFileInfoFiled::RelativePath => json!(self.relative_path),
             UploadFileInfoFiled::Size => json!(self.size),
             UploadFileInfoFiled::MimeType => json!(self.mime_type),
+            UploadFileInfoFiled::Overwrite => json!(self.overwrite),
         }
     }
     fn to_body(self, config: &FileUploadProcessParams) -> TardisResult<Value> {
@@ -150,6 +154,7 @@ pub async fn upload_files(
                     size: file.metadata().await?.size(),
                     mime_type: mime_type.to_string(),
                     id: random::<u64>().to_string(),
+                    overwrite:upload.overwrite,
                 };
 
                 files.push((file, info));
@@ -212,15 +217,13 @@ async fn backend_task(
                 if upload_metadata_result.code == 200 {
                     if let Some(upload_url) = upload_metadata_result.body {
                         info!("upload_url=====:{:?}", upload_url);
-                        // let stream = tokio_util::codec::FramedRead::new(
-                        //     file,
-                        //     tokio_util::codec::BytesCodec::new(),
-                        // );
-                        // let body = reqwest::Body::wrap_stream(stream);
-                        // let file_part = reqwest::multipart::Part::stream(file);
-                        // let form = reqwest::multipart::Form::new().part("", file_part);
+                        if reqwest::Url::parse(&upload_url).is_err() {
+                            let _ = n_tx.send(((true, false), info.clone())).await;
+                            return;
+                        }
+
                         let mut content = vec![];
-                        let _=file.read_to_end(&mut content).await;
+                        let _ = file.read_to_end(&mut content).await;
                         let client = reqwest::Client::new();
                         if let Ok(_) = client.put(upload_url).body(content).send().await {
                             let _ = n_tx.send(((true, true), info.clone())).await;

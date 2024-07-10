@@ -4,6 +4,8 @@ use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::{collections::HashMap, env, sync::Mutex};
+#[cfg(target_os = "windows")]
+use tardis::config::config_dto::TardisConfig;
 use tardis::{
     basic::result::TardisResult, crypto::crypto_base64::TardisCryptoBase64, log::info, tokio,
     TardisFuns,
@@ -71,12 +73,14 @@ async fn main() -> TardisResult<()> {
     Ok(())
 }
 
+#[cfg_attr(test, derive(Eq,PartialEq))]
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct FileProcessParams {
     pub title: String,
     pub upload: Option<FileUploadProcessParams>,
 }
 
+#[cfg_attr(test, derive(Eq,PartialEq))]
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct FileUploadProcessParams {
     pub target_kind_key: String,

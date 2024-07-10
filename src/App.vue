@@ -20,7 +20,7 @@ async function init() {
 init()
 </script>
 
-<script  lang="ts">
+<script lang="ts">
 export interface FileProcessParams {
   title: string
   upload?: FileUploadProcessParams
@@ -34,7 +34,8 @@ export interface FileUploadProcessParams {
 </script>
 
 <template>
-  <div class="flex flex-col justify-center items-center p-2 text-base text-base-content bg-base-100 w-full" style="height: 400px;">
+  <div class="flex flex-col justify-center items-center p-2 text-base text-base-content bg-base-100 w-full"
+    style="height: 400px;">
     <div class="text-lg font-bold bg-base-200 border border-base-300 p-2 rounded-md mb-2">
       {{ params?.title }}
     </div>

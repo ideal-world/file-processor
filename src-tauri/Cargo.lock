@@ -1373,6 +1373,7 @@ dependencies = [
 name = "file-processor"
 version = "0.1.0"
 dependencies = [
+ "base64 0.22.1",
  "log",
  "mime-infer",
  "once_cell",
