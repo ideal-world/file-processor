@@ -73,14 +73,14 @@ async fn main() -> TardisResult<()> {
     Ok(())
 }
 
-#[cfg_attr(test, derive(Eq,PartialEq))]
+#[cfg_attr(test, derive(Eq, PartialEq))]
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct FileProcessParams {
     pub title: String,
     pub upload: Option<FileUploadProcessParams>,
 }
 
-#[cfg_attr(test, derive(Eq,PartialEq))]
+#[cfg_attr(test, derive(Eq, PartialEq))]
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct FileUploadProcessParams {
     pub target_kind_key: String,

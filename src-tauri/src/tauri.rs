@@ -1,7 +1,12 @@
-use std::{collections::HashMap, env};
+#[cfg(test)]
+use std::collections::HashMap;
+use std::env;
 
+#[cfg(test)]
+use crate::FileUploadProcessParams;
 use crate::{
-    uploader::{self, UploadStatsResp}, FileProcessParams, FileUploadProcessParams, PARAMS
+    uploader::{self, UploadStatsResp},
+    FileProcessParams, PARAMS,
 };
 use base64::{engine::general_purpose, Engine as _};
 use log::info;
@@ -121,8 +126,8 @@ fn parse_params(url: &reqwest::Url) -> FileProcessParams {
 }
 
 #[test]
-fn test_parse_params(){
-  let mut upload_fixed_headers=HashMap::new();
-  upload_fixed_headers.insert(String::from("Token"), String::from("78hhySDFGT56gGh65"));
-  assert_eq!(parse_params(&reqwest::Url::parse("file-processor://eyJ0aXRsZSI6IuS4iuS8oOWIsO-8mmtub3dsZWRnZS03NC8iLCJ1cGxvYWQiOnsidGFyZ2V0X2tpbmRfa2V5IjoiIiwidGFyZ2V0X29ial9rZXkiOiIiLCJvdmVyd3JpdGUiOnRydWUsInVwbG9hZF9tZXRhZGF0YV91cmwiOiJ4eHh4IiwidXBsb2FkX2ZpeGVkX2hlYWRlcnMiOnsiVG9rZW4iOiI3OGhoeVNERkdUNTZnR2g2NSJ9fX0=").unwrap()),FileProcessParams{ title: String::from("上传到：knowledge-74/"), upload: Some(FileUploadProcessParams{ target_kind_key: String::new(), target_obj_key: String::new(), overwrite: true, upload_metadata_url: String::from("xxxx"), upload_metadata_rename_filed: None, upload_fixed_metadata: None, upload_fixed_headers: Some(upload_fixed_headers) }) })
+fn test_parse_params() {
+    let mut upload_fixed_headers = HashMap::new();
+    upload_fixed_headers.insert(String::from("Token"), String::from("78hhySDFGT56gGh65"));
+    assert_eq!(parse_params(&reqwest::Url::parse("file-processor://eyJ0aXRsZSI6IuS4iuS8oOWIsO-8mmtub3dsZWRnZS03NC8iLCJ1cGxvYWQiOnsidGFyZ2V0X2tpbmRfa2V5IjoiIiwidGFyZ2V0X29ial9rZXkiOiIiLCJvdmVyd3JpdGUiOnRydWUsInVwbG9hZF9tZXRhZGF0YV91cmwiOiJ4eHh4IiwidXBsb2FkX2ZpeGVkX2hlYWRlcnMiOnsiVG9rZW4iOiI3OGhoeVNERkdUNTZnR2g2NSJ9fX0=").unwrap()),FileProcessParams{ title: String::from("上传到：knowledge-74/"), upload: Some(FileUploadProcessParams{ target_kind_key: String::new(), target_obj_key: String::new(), overwrite: true, upload_metadata_url: String::from("xxxx"), upload_metadata_rename_filed: None, upload_fixed_metadata: None, upload_fixed_headers: Some(upload_fixed_headers) }) })
 }

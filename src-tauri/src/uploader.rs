@@ -1,13 +1,15 @@
-use std::{
-    collections::HashMap,
-    os::unix::fs::MetadataExt,
-    path::{Path, PathBuf},
-    sync::Arc,
-};
-
 use log::info;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
+#[cfg(target_os = "macos")]
+use std::os::unix::fs::MetadataExt;
+#[cfg(target_os = "windows")]
+use std::os::windows::fs::MetadataExt;
+use std::{
+    collections::HashMap,
+    path::{Path, PathBuf},
+    sync::Arc,
+};
 use tardis::{
     basic::{error::TardisError, result::TardisResult},
     futures::{future::BoxFuture, stream, FutureExt as _, StreamExt as _},
@@ -41,7 +43,7 @@ pub struct UploadFileInfo {
     pub relative_path: PathBuf,
     pub size: u64,
     pub mime_type: String,
-    pub overwrite:bool,
+    pub overwrite: bool,
 }
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq, Hash)]
 pub enum UploadFileInfoFiled {
@@ -144,6 +146,15 @@ pub async fn upload_files(
                 let relative_path = path
                     .strip_prefix(&base_path)
                     .map_err(|e| TardisError::io_error(&format!("io error:{e}"), "error"))?;
+                let mut size = 0;
+                #[cfg(target_os = "macos")]
+                {
+                    size = file.metadata().await?.size();
+                }
+                #[cfg(target_os = "windows")]
+                {
+                    size = file.metadata().await?.file_size(&self);
+                }
                 let info = UploadFileInfo {
                     name: path
                         .file_name()
@@ -151,10 +162,10 @@ pub async fn upload_files(
                         .unwrap_or_default()
                         .to_string(),
                     relative_path: relative_path.to_path_buf(),
-                    size: file.metadata().await?.size(),
+                    size,
                     mime_type: mime_type.to_string(),
                     id: random::<u64>().to_string(),
-                    overwrite:upload.overwrite,
+                    overwrite: upload.overwrite,
                 };
 
                 files.push((file, info));
