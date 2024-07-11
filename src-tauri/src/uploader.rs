@@ -153,7 +153,7 @@ pub async fn upload_files(
                 }
                 #[cfg(target_os = "windows")]
                 {
-                    size = file.metadata().await?.file_size(&self);
+                    size = file.metadata().await?.file_size();
                 }
                 let info = UploadFileInfo {
                     name: path

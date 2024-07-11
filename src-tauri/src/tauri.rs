@@ -10,10 +10,12 @@ use crate::{
 };
 use base64::{engine::general_purpose, Engine as _};
 use log::info;
-use tardis::{
-    basic::result::TardisResult, config::config_dto::TardisConfig, futures::executor, TardisFuns,
-};
-use tauri::{path::BaseDirectory, Manager, Window};
+use tardis::{basic::result::TardisResult, TardisFuns};
+#[cfg(target_os = "macos")]
+use tardis::{config::config_dto::TardisConfig, futures::executor};
+#[cfg(target_os = "macos")]
+use tauri::path::BaseDirectory;
+use tauri::{Manager, Window};
 use tauri_plugin_log::{Target, TargetKind};
 
 #[tauri::command]
