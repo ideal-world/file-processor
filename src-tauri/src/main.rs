@@ -6,6 +6,8 @@ use serde_json::Value;
 use std::{collections::HashMap, env, sync::Mutex};
 #[cfg(target_os = "windows")]
 use tardis::config::config_dto::TardisConfig;
+#[cfg(target_os = "windows")]
+use tardis::TardisFuns;
 use tardis::{basic::result::TardisResult, log::info, tokio};
 mod tauri;
 mod uploader;
