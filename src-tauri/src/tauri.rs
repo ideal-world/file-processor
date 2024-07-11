@@ -9,7 +9,7 @@ use crate::{
     FileProcessParams, PARAMS,
 };
 use base64::{engine::general_purpose, Engine as _};
-use log::info;
+use log::{error, info};
 use tardis::{basic::result::TardisResult, TardisFuns};
 #[cfg(target_os = "macos")]
 use tardis::{config::config_dto::TardisConfig, futures::executor};
@@ -114,17 +114,34 @@ pub fn build() {
         });
 }
 
-fn parse_params(url: &reqwest::Url) -> FileProcessParams {
-    TardisFuns::json
-        .str_to_obj::<FileProcessParams>(
-            &String::from_utf8(
-                general_purpose::URL_SAFE
-                    .decode(url.host_str().unwrap())
-                    .unwrap(),
-            )
-            .unwrap(),
-        )
-        .unwrap()
+pub fn parse_params(url: &reqwest::Url) -> FileProcessParams {
+    match url.host_str() {
+        Some(url_host) => match general_purpose::URL_SAFE.decode(url_host) {
+            Ok(base64) => match String::from_utf8(base64) {
+                Ok(base64_str) => {
+                    match TardisFuns::json.str_to_obj::<FileProcessParams>(&base64_str) {
+                        Ok(params) => params,
+                        Err(e) => {
+                            error!("json fail:{e}");
+                            panic!("json fail:{e}")
+                        }
+                    }
+                }
+                Err(e) => {
+                    error!("base64 decode to String fail:{e}");
+                    panic!("base64 decode to String fail:{e}")
+                }
+            },
+            Err(e) => {
+                error!("base64 decode fail:{e}");
+                panic!("base64 decode fail:{e}")
+            }
+        },
+        None => {
+            error!("url not have host!");
+            panic!("url not have host!")
+        }
+    }
 }
 
 #[test]

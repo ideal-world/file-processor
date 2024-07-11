@@ -6,10 +6,7 @@ use serde_json::Value;
 use std::{collections::HashMap, env, sync::Mutex};
 #[cfg(target_os = "windows")]
 use tardis::config::config_dto::TardisConfig;
-use tardis::{
-    basic::result::TardisResult, crypto::crypto_base64::TardisCryptoBase64, log::info, tokio,
-    TardisFuns,
-};
+use tardis::{basic::result::TardisResult, log::info, tokio};
 mod tauri;
 mod uploader;
 
@@ -28,6 +25,7 @@ fn get_params() -> FileProcessParams {
 async fn main() -> TardisResult<()> {
     env::set_var("RUST_LOG", "debug");
     let args: Vec<String> = env::args().collect();
+    info!("args: {:?}", args);
     if args.len() > 1 {
         let mut raw_params = args[1].as_str();
         if raw_params.contains("//") {
@@ -37,13 +35,20 @@ async fn main() -> TardisResult<()> {
         if raw_params.ends_with("/") {
             raw_params = &raw_params[..raw_params.len() - 1];
         }
-        let base64 = TardisCryptoBase64 {};
-        let params = TardisFuns::json
-            .str_to_obj::<FileProcessParams>(base64.decode_to_string(raw_params).unwrap().as_str())
-            .unwrap();
-        info!("params: {:?}", params);
-        let mut params_set = PARAMS.lock().unwrap();
-        *params_set = params;
+        match reqwest::Url::parse(raw_params) {
+            Ok(url) => {
+                let params = tauri::parse_params(&url);
+                info!("params: {:?}", params);
+                let mut params_set = PARAMS.lock().unwrap();
+                *params_set = params;
+            }
+            Err(_) => log::error!("parse url fail!:{raw_params}"),
+        }
+
+        // let base64 = TardisCryptoBase64 {};
+        // let params = TardisFuns::json
+        //     .str_to_obj::<FileProcessParams>(base64.decode_to_string(raw_params).unwrap().as_str())
+        //     .unwrap();
     } else {
         // mock
         let mut params_set = PARAMS.lock().unwrap();

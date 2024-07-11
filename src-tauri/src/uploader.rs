@@ -1,7 +1,7 @@
 use log::info;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
-#[cfg(target_os = "macos")]
+#[cfg(any(target_os = "macos", target_os = "linux"))]
 use std::os::unix::fs::MetadataExt;
 #[cfg(target_os = "windows")]
 use std::os::windows::fs::MetadataExt;
@@ -147,7 +147,7 @@ pub async fn upload_files(
                     .strip_prefix(&base_path)
                     .map_err(|e| TardisError::io_error(&format!("io error:{e}"), "error"))?;
                 let mut size = 0;
-                #[cfg(target_os = "macos")]
+                #[cfg(any(target_os = "macos", target_os = "linux"))]
                 {
                     size = file.metadata().await?.size();
                 }
