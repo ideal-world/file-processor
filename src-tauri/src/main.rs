@@ -1,5 +1,6 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+use log::info;
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -8,7 +9,7 @@ use std::{collections::HashMap, env, sync::Mutex};
 use tardis::config::config_dto::TardisConfig;
 #[cfg(target_os = "windows")]
 use tardis::TardisFuns;
-use tardis::{basic::result::TardisResult, log::info, tokio};
+use tardis::{basic::result::TardisResult,tokio};
 mod tauri;
 mod uploader;
 
@@ -30,13 +31,13 @@ async fn main() -> TardisResult<()> {
     info!("args: {:?}", args);
     if args.len() > 1 {
         let mut raw_params = args[1].as_str();
-        if raw_params.contains("//") {
-            let index = raw_params.find("//").unwrap();
-            raw_params = &raw_params[index + 2..];
-        }
-        if raw_params.ends_with("/") {
-            raw_params = &raw_params[..raw_params.len() - 1];
-        }
+        // if raw_params.contains("//") {
+        //     let index = raw_params.find("//").unwrap();
+        //     raw_params = &raw_params[index + 2..];
+        // }
+        // if raw_params.ends_with("/") {
+        //     raw_params = &raw_params[..raw_params.len() - 1];
+        // }
         match reqwest::Url::parse(raw_params) {
             Ok(url) => {
                 let params = tauri::parse_params(&url);
