@@ -1,16 +1,27 @@
+#[cfg(test)]
+use std::collections::HashMap;
+use std::env;
+
+#[cfg(test)]
+use crate::FileUploadProcessParams;
 use crate::{
     uploader::{self, UploadStatsResp},
     FileProcessParams, PARAMS,
 };
-use log::info;
-use tardis::basic::result::TardisResult;
+use base64::{engine::general_purpose, Engine as _};
+use log::{error, info};
+use tardis::{basic::result::TardisResult, TardisFuns};
+#[cfg(not(debug_assertions))]
+use tardis::{config::config_dto::TardisConfig, futures::executor};
+#[cfg(not(debug_assertions))]
+use tauri::path::BaseDirectory;
 use tauri::{Manager, Window};
 use tauri_plugin_log::{Target, TargetKind};
 
 #[tauri::command]
-async fn upload_files(files_uri: &str, window: Window) -> TardisResult<UploadStatsResp> {
-    info!("upload_files: {}", files_uri);
-    uploader::upload_files(files_uri, window).await
+async fn upload_files(files_uris: Vec<String>, window: Window) -> TardisResult<UploadStatsResp> {
+    info!("upload_files: {:?}", files_uris);
+    uploader::upload_files(files_uris, window).await
 }
 
 #[tauri::command]
@@ -18,9 +29,32 @@ async fn get_params() -> TardisResult<FileProcessParams> {
     Ok((*PARAMS.lock().unwrap()).clone())
 }
 
+fn set_params(params: FileProcessParams) -> TardisResult<()> {
+    let mut params_set = PARAMS.lock().unwrap();
+    *params_set = params;
+    Ok(())
+}
+
 pub fn build() {
     tauri::Builder::default()
         .setup(|app| {
+            #[cfg(not(debug_assertions))]
+            {
+                let config_path = app
+                    .path()
+                    .resolve("config", BaseDirectory::Resource)
+                    .expect("get resource path err!");
+                executor::block_on(async {
+                    // let config_path = config_path.strip_prefix("/").unwrap();
+                    let config = TardisConfig::init(Some(config_path.to_str().unwrap()))
+                        .await
+                        .expect("can't find config");
+                    info!("====config:{config:?}");
+                    TardisFuns::init_conf(config)
+                        .await
+                        .expect("can't init config");
+                });
+            }
             let window = app.get_webview_window("main").unwrap();
             let current_monitor = window.current_monitor().unwrap().unwrap();
             let screen_size = current_monitor.size();
@@ -48,6 +82,53 @@ pub fn build() {
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_dialog::init())
         .invoke_handler(tauri::generate_handler![upload_files, get_params])
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .build(tauri::generate_context!())
+        .expect("error while running tauri application")
+        .run(|_app, _event| {
+            #[cfg(any(target_os = "macos", target_os = "ios"))]
+            if let tauri::RunEvent::Opened { urls } = _event {
+                if let Some(url) = urls.get(0) {
+                    let params = parse_params(url);
+                    info!("Opened url parse to params: {:?}", params);
+                    let _ = set_params(params);
+                }
+            }
+        });
+}
+
+pub fn parse_params(url: &reqwest::Url) -> FileProcessParams {
+    match url.host_str() {
+        Some(url_host) => match general_purpose::URL_SAFE.decode(url_host) {
+            Ok(base64) => match String::from_utf8(base64) {
+                Ok(base64_str) => {
+                    match TardisFuns::json.str_to_obj::<FileProcessParams>(&base64_str) {
+                        Ok(params) => params,
+                        Err(e) => {
+                            error!("json fail:{e}");
+                            panic!("json fail:{e}")
+                        }
+                    }
+                }
+                Err(e) => {
+                    error!("base64 decode to String fail:{e}");
+                    panic!("base64 decode to String fail:{e}")
+                }
+            },
+            Err(e) => {
+                error!("base64 decode fail:{e}");
+                panic!("base64 decode fail:{e}")
+            }
+        },
+        None => {
+            error!("url not have host!");
+            panic!("url not have host!")
+        }
+    }
+}
+
+#[test]
+fn test_parse_params() {
+    let mut upload_fixed_headers = HashMap::new();
+    upload_fixed_headers.insert(String::from("Token"), String::from("78hhySDFGT56gGh65"));
+    assert_eq!(parse_params(&reqwest::Url::parse("file-processor://eyJ0aXRsZSI6IuS4iuS8oOWIsO-8mmtub3dsZWRnZS03NC8iLCJ1cGxvYWQiOnsidGFyZ2V0X2tpbmRfa2V5IjoiIiwidGFyZ2V0X29ial9rZXkiOiIiLCJvdmVyd3JpdGUiOnRydWUsInVwbG9hZF9tZXRhZGF0YV91cmwiOiJ4eHh4IiwidXBsb2FkX2ZpeGVkX2hlYWRlcnMiOnsiVG9rZW4iOiI3OGhoeVNERkdUNTZnR2g2NSJ9fX0=").unwrap()),FileProcessParams{ title: String::from("上传到：knowledge-74/"), upload: Some(FileUploadProcessParams{ target_kind_key: String::new(), target_obj_key: String::new(), overwrite: true, upload_metadata_url: String::from("xxxx"), upload_metadata_rename_filed: None, upload_fixed_metadata: None, upload_fixed_headers: Some(upload_fixed_headers) }) })
 }

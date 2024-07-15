@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { invoke } from '@tauri-apps/api/core'
 import { listen } from '@tauri-apps/api/event'
+import type { FileResponse } from '@tauri-apps/plugin-dialog'
 import { message, open } from '@tauri-apps/plugin-dialog'
 import { debug, info } from '@tauri-apps/plugin-log'
-import { nextTick, ref } from 'vue'
+import { nextTick, onMounted, ref } from 'vue'
 import type { FileUploadProcessParams } from '../App.vue'
 
 const props = defineProps<{
@@ -13,6 +14,7 @@ const props = defineProps<{
 const totalStatsResp = ref<UploadStatsResp | null>(null)
 const uploadedStatsResp = ref<UploadStatsResp | null>(null)
 const progressRef = ref<HTMLElement>()
+const uploadIdRef = ref<string[]>([])
 const triggerUpload = ref<boolean>(false)
 const isUserScrolling = ref<boolean>(false)
 
@@ -24,38 +26,53 @@ async function init() {
       total_file_numbers: progressResp.uploaded_file_numbers,
       total_file_size: progressResp.uploaded_file_size,
     }
+
+    const current_ids = progressResp.current_files.map(v => v.id)
+    const fail_ids = progressResp.fail_files.map(v => v.id)
     progressRef.value!.querySelectorAll('.uploading').forEach((el) => {
-      el.classList.remove('uploading')
-      el.childNodes[1].textContent = '已上传'
+      if (!current_ids.includes(el.id)) {
+        el.classList.remove('uploading')
+        el.childNodes[1].textContent = '已上传'
+      }
+      if (fail_ids.includes(el.id)) {
+        el.classList.remove('uploading')
+        el.childNodes[1].textContent = '失败'
+      }
     })
     progressResp.current_files.forEach((file) => {
-      const fileDiv = document.createElement('div')
-      fileDiv.innerHTML = `<span class='uploading'>${file.full_name} (${(file.size / 1024).toFixed(2)}KB) &nbsp; <i>上传中...</i></span>`
-      progressRef.value!.appendChild(fileDiv)
-      if (!isUserScrolling.value) {
-        progressRef.value!.scrollTop = progressRef.value!.scrollHeight
+      if (!uploadIdRef.value!.includes(file.id)) {
+        uploadIdRef.value!.push(file.id)
+        const fileDiv = document.createElement('div')
+        fileDiv.innerHTML = `<span id='${file.id}' class='uploading'>${file.relative_path} (${(file.size / 1024).toFixed(2)}KB) &nbsp; <i>上传中...</i></span>`
+        progressRef.value!.appendChild(fileDiv)
+        if (!isUserScrolling.value) {
+          progressRef.value!.scrollTop = progressRef.value!.scrollHeight
+        }
       }
     })
   })
 }
-init()
+onMounted(() => {
+  init()
+})
 
-async function selectFiles() {
+async function selectFiles(is_dir: boolean) {
   const files = await open({
     multiple: true,
-    directory: true,
+    directory: is_dir,
   })
   if (!files) {
     await message('没有选择任何文件或文件夹', { kind: 'warning' })
     return
   }
   triggerUpload.value = true
-  info(`upload file from :${files[0]}`)
+  const filesUri = is_dir ? files : files.map((v: FileResponse) => v.path)
+  info(`upload file from :${JSON.stringify(filesUri)}`)
   uploadedStatsResp.value = {
     total_file_numbers: 0,
     total_file_size: 0,
   }
-  totalStatsResp.value = await invoke('upload_files', { filesUri: files[0] })
+  totalStatsResp.value = await invoke('upload_files', { filesUris: filesUri })
   nextTick(() => {
     listenScroll()
   })
@@ -73,15 +90,17 @@ function listenScroll() {
 }
 </script>
 
-<script  lang="ts">
+<script lang="ts">
 export interface UploadProgressResp {
   uploaded_file_numbers: number
   uploaded_file_size: number
   current_files: UploadFileInfo[]
+  fail_files: UploadFileInfo[]
 }
 export interface UploadFileInfo {
+  id: string
   name: string
-  full_name: string
+  relative_path: string
   size: number
 }
 export interface UploadStatsResp {
@@ -93,8 +112,11 @@ export interface UploadStatsResp {
 <template>
   <div v-if="!totalStatsResp" class="flex flex-col justify-center items-center h-full w-full">
     <template v-if="!triggerUpload">
-      <button class="iw-btn iw-btn-primary self-center" @click="selectFiles">
-        <span>选择文件或文件夹</span>
+      <button class="iw-btn iw-btn-primary self-center w-28" @click="selectFiles(false)">
+        <span>选择文件</span>
+      </button>
+      <button class="iw-btn iw-btn-primary self-center w-28 mt-1" @click="selectFiles(true)">
+        <span>选择文件夹</span>
       </button>
       <span class="text-sm mt-1">文件冲突处理：{{ props.upload.overwrite ? "覆盖" : "跳过" }}</span>
     </template>
@@ -108,18 +130,21 @@ export interface UploadStatsResp {
   </div>
   <div v-else class="flex flex-col h-full w-full">
     <div class="flex justify-center p-1 border-b border-b-base-300">
-      <span class="font-bold" title="已上传文件数"> {{ uploadedStatsResp!.total_file_numbers }}</span> / <span class="font-bold" title="总文件数"> {{ totalStatsResp!.total_file_numbers }}</span> &nbsp; | &nbsp;
-      <span class="font-bold" title="已上传大小"> {{ (uploadedStatsResp!.total_file_size / 1024 / 1024).toFixed(2) }}</span> / <span class="font-bold" title="总大小"> {{ (totalStatsResp!.total_file_size / 1024 / 1024).toFixed(2) }}</span> MB
+      <span class="font-bold" title="已上传文件数"> {{ uploadedStatsResp!.total_file_numbers }}</span> / <span
+        class="font-bold" title="总文件数"> {{ totalStatsResp!.total_file_numbers }}</span> &nbsp; | &nbsp;
+      <span class="font-bold" title="已上传大小"> {{ (uploadedStatsResp!.total_file_size / 1024 / 1024).toFixed(2) }}</span>
+      /
+      <span class="font-bold" title="总大小"> {{ (totalStatsResp!.total_file_size / 1024 / 1024).toFixed(2) }}</span> MB
     </div>
     <div ref="progressRef" class="flex-1 overflow-auto text-sm" />
   </div>
 </template>
 
 <style>
-.uploading{
+.uploading {
   @apply text-primary;
 
-  i{
+  i {
     @apply text-info;
   }
 }
