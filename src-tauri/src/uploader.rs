@@ -104,23 +104,22 @@ impl UploadFileInfo {
     }
     fn to_body(self, config: &FileUploadProcessParams) -> TardisResult<Value> {
         let mut value = json!({});
-        if let Some(map_filed) = &config.upload_metadata_rename_filed {
-            for filed in UploadFileInfoFiled::get_all() {
+
+        for filed in UploadFileInfoFiled::get_all() {
+            if let Some(map_filed) = &config.upload_metadata_rename_filed {
                 if let Some(a) = map_filed.get(&filed) {
                     value
                         .as_object_mut()
                         .expect("can't be here")
                         .insert(a.to_string(), self.get_value_by_map(filed));
-                } else {
-                    value.as_object_mut().expect("can't be here").insert(
-                        filed.to_str_filed().to_string(),
-                        self.get_value_by_map(filed),
-                    );
-                };
+                    continue;
+                }
             }
-        } else {
-            value = serde_json::to_value(&self)
-                .map_err(|e| TardisError::io_error(&format!("value serde failed: {e}"), ""))?
+
+            value.as_object_mut().expect("can't be here").insert(
+                filed.to_str_filed().to_string(),
+                self.get_value_by_map(filed),
+            );
         }
         if let Some(fixed_fileds) = &config.upload_fixed_metadata {
             for fixed_filed in fixed_fileds {
