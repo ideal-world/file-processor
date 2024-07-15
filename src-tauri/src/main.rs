@@ -70,11 +70,11 @@ async fn main() -> TardisResult<()> {
     }
 
     // Debug时需要改为 ``src-tauri/config``
-    #[cfg(target_os = "windows")]
-    {
-        let config = TardisConfig::init(Some("config")).await?;
-        TardisFuns::init_conf(config).await?;
-    }
+    // #[cfg(target_os = "windows")]
+    // {
+    //     let config = TardisConfig::init(Some("config")).await?;
+    //     TardisFuns::init_conf(config).await?;
+    // }
 
     tauri::build();
 

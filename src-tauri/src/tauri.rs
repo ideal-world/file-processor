@@ -39,14 +39,14 @@ pub fn build() {
     tauri::Builder::default()
         .setup(|app| {
             //macos use this way to init config
-            #[cfg(target_os = "macos")]
+            // #[cfg(target_os = "macos")]
             {
                 let config_path = app
                     .path()
                     .resolve("config", BaseDirectory::Resource)
                     .expect("get resource path err!");
                 executor::block_on(async {
-                    let config_path = config_path.strip_prefix("/").unwrap();
+                    // let config_path = config_path.strip_prefix("/").unwrap();
                     let config = TardisConfig::init(Some(config_path.to_str().unwrap()))
                         .await
                         .expect("can't find config");
