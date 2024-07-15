@@ -38,7 +38,7 @@ fn set_params(params: FileProcessParams) -> TardisResult<()> {
 pub fn build() {
     tauri::Builder::default()
         .setup(|app| {
-          #[cfg(not(debug_assertions))]
+            #[cfg(not(debug_assertions))]
             {
                 let config_path = app
                     .path()

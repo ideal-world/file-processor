@@ -82,16 +82,20 @@ impl UploadFileInfo {
             UploadFileInfoFiled::Name => json!(self.name),
             UploadFileInfoFiled::RelativePath => {
                 #[cfg(target_os = "windows")]
-                let relative_path = match self.relative_path.to_str() {
-                    Some(s) => s.replace("\\", "/"),
-                    None => {
-                        log::error!("path contains invalid UTF-8 characters");
-                        panic!("path contains invalid UTF-8 characters");
-                    }
-                };
+                {
+                    let relative_path = match self.relative_path.to_str() {
+                        Some(s) => s.replace("\\", "/"),
+                        None => {
+                            log::error!("path contains invalid UTF-8 characters");
+                            panic!("path contains invalid UTF-8 characters");
+                        }
+                    };
+                    json!(relative_path)
+                }
                 #[cfg(not(target_os = "windows"))]
-                let relative_path = self.relative_path.clone();
-                json!(relative_path)
+                {
+                    json!(self.relative_path)
+                }
             }
             UploadFileInfoFiled::Size => json!(self.size),
             UploadFileInfoFiled::MimeType => json!(self.mime_type),
@@ -335,4 +339,12 @@ async fn async_get_files(file_uri: &str) -> TardisResult<Vec<PathBuf>> {
     }
 
     Ok(result)
+}
+
+#[test]
+fn test() {
+    let a = Path::new(r#"C:\a\B"#);
+    let b = a.to_str().unwrap();
+    println!("{}", b);
+    println!("{}", b.replace("\\", "/"));
 }
