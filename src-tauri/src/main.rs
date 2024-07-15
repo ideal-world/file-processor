@@ -5,11 +5,11 @@ use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::{collections::HashMap, env, sync::Mutex};
-#[cfg(target_os = "windows")]
+#[cfg(debug_assertions)]
 use tardis::config::config_dto::TardisConfig;
-#[cfg(target_os = "windows")]
+#[cfg(debug_assertions)]
 use tardis::TardisFuns;
-use tardis::{basic::result::TardisResult,tokio};
+use tardis::{basic::result::TardisResult, tokio};
 mod tauri;
 mod uploader;
 
@@ -28,16 +28,8 @@ fn get_params() -> FileProcessParams {
 async fn main() -> TardisResult<()> {
     env::set_var("RUST_LOG", "debug");
     let args: Vec<String> = env::args().collect();
-    info!("args: {:?}", args);
     if args.len() > 1 {
-        let mut raw_params = args[1].as_str();
-        // if raw_params.contains("//") {
-        //     let index = raw_params.find("//").unwrap();
-        //     raw_params = &raw_params[index + 2..];
-        // }
-        // if raw_params.ends_with("/") {
-        //     raw_params = &raw_params[..raw_params.len() - 1];
-        // }
+        let raw_params = args[1].as_str();
         match reqwest::Url::parse(raw_params) {
             Ok(url) => {
                 let params = tauri::parse_params(&url);
@@ -47,11 +39,6 @@ async fn main() -> TardisResult<()> {
             }
             Err(_) => log::error!("parse url fail!:{raw_params}"),
         }
-
-        // let base64 = TardisCryptoBase64 {};
-        // let params = TardisFuns::json
-        //     .str_to_obj::<FileProcessParams>(base64.decode_to_string(raw_params).unwrap().as_str())
-        //     .unwrap();
     } else {
         // mock
         let mut params_set = PARAMS.lock().unwrap();
@@ -69,12 +56,12 @@ async fn main() -> TardisResult<()> {
         };
     }
 
-    // Debug时需要改为 ``src-tauri/config``
-    // #[cfg(target_os = "windows")]
-    // {
-    //     let config = TardisConfig::init(Some("config")).await?;
-    //     TardisFuns::init_conf(config).await?;
-    // }
+    // Debug时使用此初始化 ``src-tauri/config``
+    #[cfg(debug_assertions)]
+    {
+        let config = TardisConfig::init(Some("src-tauri/config")).await?;
+        TardisFuns::init_conf(config).await?;
+    }
 
     tauri::build();
 

@@ -11,9 +11,9 @@ use crate::{
 use base64::{engine::general_purpose, Engine as _};
 use log::{error, info};
 use tardis::{basic::result::TardisResult, TardisFuns};
-// #[cfg(target_os = "macos")]
+#[cfg(not(debug_assertions))]
 use tardis::{config::config_dto::TardisConfig, futures::executor};
-// #[cfg(target_os = "macos")]
+#[cfg(not(debug_assertions))]
 use tauri::path::BaseDirectory;
 use tauri::{Manager, Window};
 use tauri_plugin_log::{Target, TargetKind};
@@ -38,8 +38,7 @@ fn set_params(params: FileProcessParams) -> TardisResult<()> {
 pub fn build() {
     tauri::Builder::default()
         .setup(|app| {
-            //macos use this way to init config
-            // #[cfg(target_os = "macos")]
+          #[cfg(not(debug_assertions))]
             {
                 let config_path = app
                     .path()
@@ -55,22 +54,6 @@ pub fn build() {
                         .await
                         .expect("can't init config");
                 });
-                // app.listen("deep-link://new-url", |url| {
-                //     let urls: Vec<tauri::Url> = serde_json::from_str(url.payload()).unwrap();
-                //     if let Some(url) = urls.get(0) {
-                //         let base64 = TardisCryptoBase64 {};
-                //         let params = TardisFuns::json
-                //             .str_to_obj::<FileProcessParams>(
-                //                 base64
-                //                     .decode_to_string(url.host_str().unwrap())
-                //                     .unwrap()
-                //                     .as_str(),
-                //             )
-                //             .unwrap();
-                //         info!("params: {:?}", params);
-                //         let _ = set_params(params);
-                //     }
-                // });
             }
             let window = app.get_webview_window("main").unwrap();
             let current_monitor = window.current_monitor().unwrap().unwrap();
@@ -104,7 +87,6 @@ pub fn build() {
         .run(|_app, _event| {
             #[cfg(any(target_os = "macos", target_os = "ios"))]
             if let tauri::RunEvent::Opened { urls } = _event {
-                // info!("open url============={urls}",);
                 if let Some(url) = urls.get(0) {
                     let params = parse_params(url);
                     info!("Opened url parse to params: {:?}", params);

@@ -60,6 +60,7 @@ impl UploadFileInfoFiled {
             UploadFileInfoFiled::RelativePath,
             UploadFileInfoFiled::Size,
             UploadFileInfoFiled::MimeType,
+            UploadFileInfoFiled::Overwrite,
         ]
     }
     fn to_str_filed(&self) -> &str {
@@ -79,7 +80,19 @@ impl UploadFileInfo {
     fn get_value_by_map(&self, filed: UploadFileInfoFiled) -> Value {
         match filed {
             UploadFileInfoFiled::Name => json!(self.name),
-            UploadFileInfoFiled::RelativePath => json!(self.relative_path),
+            UploadFileInfoFiled::RelativePath => {
+                #[cfg(target_os = "windows")]
+                let relative_path = match self.relative_path.to_str() {
+                    Some(s) => s.replace("\\", "/"),
+                    None => {
+                        log::error!("path contains invalid UTF-8 characters");
+                        panic!("path contains invalid UTF-8 characters");
+                    }
+                };
+                #[cfg(not(target_os = "windows"))]
+                let relative_path = self.relative_path.clone();
+                json!(relative_path)
+            }
             UploadFileInfoFiled::Size => json!(self.size),
             UploadFileInfoFiled::MimeType => json!(self.mime_type),
             UploadFileInfoFiled::Overwrite => json!(self.overwrite),
