@@ -340,11 +340,3 @@ async fn async_get_files(file_uri: &str) -> TardisResult<Vec<PathBuf>> {
 
     Ok(result)
 }
-
-#[test]
-fn test() {
-    let a = Path::new(r#"C:\a\B"#);
-    let b = a.to_str().unwrap();
-    println!("{}", b);
-    println!("{}", b.replace("\\", "/"));
-}
