@@ -10,7 +10,10 @@ use crate::{
 };
 use base64::{engine::general_purpose, Engine as _};
 use log::{error, info};
-use tardis::{basic::{error::TardisError, result::TardisResult}, TardisFuns};
+use tardis::{
+    basic::{error::TardisError, result::TardisResult},
+    TardisFuns,
+};
 #[cfg(not(debug_assertions))]
 use tardis::{config::config_dto::TardisConfig, futures::executor};
 #[cfg(not(debug_assertions))]
@@ -31,13 +34,13 @@ async fn get_params() -> TardisResult<FileProcessParams> {
 
 #[tauri::command]
 async fn cancel() -> TardisResult<()> {
-  let guard = BACKGROUND_TASK
-            .try_lock()
-            .ok_or(TardisError::io_error(&format!("try lock error"), "error"))?;
-  if let Some(task)=&(*guard) {
-      task.abort();
-      return Ok(())
-  }
+    let guard = BACKGROUND_TASK
+        .try_lock()
+        .ok_or(TardisError::io_error(&format!("try lock error"), "error"))?;
+    if let Some(task) = &(*guard) {
+        task.abort();
+        return Ok(());
+    }
     Ok(())
 }
 
@@ -94,7 +97,7 @@ pub fn build() {
         )
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_dialog::init())
-        .invoke_handler(tauri::generate_handler![upload_files, get_params])
+        .invoke_handler(tauri::generate_handler![upload_files, get_params, cancel])
         .build(tauri::generate_context!())
         .expect("error while running tauri application")
         .run(|_app, _event| {
