@@ -5,6 +5,7 @@ import type { FileResponse } from '@tauri-apps/plugin-dialog'
 import { message, open } from '@tauri-apps/plugin-dialog'
 import { debug, info } from '@tauri-apps/plugin-log'
 import { nextTick, onMounted, ref } from 'vue'
+import { exit } from '@tauri-apps/plugin-process'
 import type { FileUploadProcessParams } from '../App.vue'
 
 const props = defineProps<{
@@ -17,15 +18,23 @@ const progressRef = ref<HTMLElement>()
 const uploadIdRef = ref<string[]>([])
 const triggerUpload = ref<boolean>(false)
 const isUserScrolling = ref<boolean>(false)
+const isDone = ref<boolean>(false)
+const failOnly = ref<boolean>(false)
+const progress = ref<string>('0')
 
 async function init() {
   await listen('upload-progress', (event) => {
     debug(`Received event:${JSON.stringify(event)}`)
     const progressResp = event.payload as UploadProgressResp
+    debug(`Received progressResp:${JSON.stringify(progressResp)}`)
     uploadedStatsResp.value = {
       total_file_numbers: progressResp.uploaded_file_numbers,
       total_file_size: progressResp.uploaded_file_size,
     }
+    if (progressResp.uploaded_file_numbers === totalStatsResp.value?.total_file_numbers) {
+      isDone.value = true
+    }
+    progress.value = ((progressResp.uploaded_file_numbers / totalStatsResp.value!.total_file_numbers) * 100).toFixed(2)
 
     const current_ids = progressResp.current_files.map(v => v.id)
     const fail_ids = progressResp.fail_files.map(v => v.id)
@@ -33,10 +42,12 @@ async function init() {
       if (!current_ids.includes(el.id)) {
         el.classList.remove('uploading')
         el.childNodes[1].textContent = '已上传'
+        el.classList.add('upload-success')
       }
       if (fail_ids.includes(el.id)) {
         el.classList.remove('uploading')
         el.childNodes[1].textContent = '失败'
+        el.classList.add('upload-fail')
       }
     })
     progressResp.current_files.forEach((file) => {
@@ -88,6 +99,16 @@ function listenScroll() {
     }
   })
 }
+
+async function exit0() {
+  await exit(0)
+}
+
+async function cancel() {
+  const result = await invoke('cancel')
+  debug(`result `, { result })
+  isDone.value = true
+}
 </script>
 
 <script lang="ts">
@@ -110,33 +131,81 @@ export interface UploadStatsResp {
 </script>
 
 <template>
-  <div v-if="!totalStatsResp" class="flex flex-col justify-center items-center h-full w-full">
-    <template v-if="!triggerUpload">
-      <button class="iw-btn iw-btn-primary self-center w-28" @click="selectFiles(false)">
-        <span>选择文件</span>
-      </button>
-      <button class="iw-btn iw-btn-primary self-center w-28 mt-1" @click="selectFiles(true)">
-        <span>选择文件夹</span>
-      </button>
-      <span class="text-sm mt-1">文件冲突处理：{{ props.upload.overwrite ? "覆盖" : "跳过" }}</span>
-    </template>
-    <template v-else>
-      <div class="flex flex-col justify-center items-center h-full w-full">
-        <div class="flex flex-col justify-center items-center">
-          <span class="text-lg">上传处理中...</span>
+  <div v-if="!totalStatsResp" class="flex flex-col h-full w-full">
+    <span class="font-bold justify-start">请选择上传方式:</span>
+    <div class="flex flex-col h-full w-full justify-center items-center">
+      <template v-if="!triggerUpload">
+        <div class="flex justify-center items-center">
+          <button class="iw-btn iw-btn-primary self-center w-28 h-20" @click="selectFiles(false)">
+            <svg
+              t="1723100020811" class="icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg"
+              p-id="4234" width="50" height="50"
+            >
+              <path
+                d="M288 320a32 32 0 1 1 0-64h448a32 32 0 0 1 0 64H288zM288 544a32 32 0 0 1 0-64h448a32 32 0 0 1 0 64H288zM288 768a32 32 0 0 1 0-64h128a32 32 0 0 1 0 64H288z"
+                fill="#000000" p-id="4235"
+              />
+              <path
+                d="M807.968 802.24a32 32 0 0 1 41.984 48.32l-153.856 133.6a32 32 0 0 1-20.992 7.84H195.04C140.16 992 96 946.624 96 891.072V132.928C96 77.376 140.16 32 195.04 32h633.92C883.84 32 928 77.376 928 132.928v564.32a32 32 0 1 1-64 0V132.928C864 112.32 848.096 96 828.96 96H195.04C175.904 96 160 112.32 160 132.928v758.144C160 911.68 175.904 928 195.04 928h468.096l144.832-125.76z"
+                fill="#000000" p-id="4236"
+              />
+              <path
+                d="M704 959.136a32 32 0 1 1-64 0v-186.24C640 717.408 684.16 672 739.04 672h157.632a32 32 0 0 1 0 64h-157.632c-19.136 0-35.04 16.32-35.04 36.928v186.24z"
+                fill="#000000" p-id="4237"
+              />
+            </svg>
+            <span>文件上传</span>
+          </button>
+          <button class="iw-btn iw-btn-primary self-center w-28 h-20 ml-6" @click="selectFiles(true)">
+            <svg
+              class="icon" viewBox="0 0 1100 1100" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="4449"
+              width="50" height="50"
+            >
+              <path
+                d="M912 208H427.872l-50.368-94.176A63.936 63.936 0 0 0 321.056 80H112c-35.296 0-64 28.704-64 64v736c0 35.296 28.704 64 64 64h800c35.296 0 64-28.704 64-64v-608c0-35.296-28.704-64-64-64z m-800-64h209.056l68.448 128H912v97.984c-0.416 0-0.8-0.128-1.216-0.128H113.248c-0.416 0-0.8 0.128-1.248 0.128V144z m0 736v-96l1.248-350.144 798.752 1.216V784h0.064v96H112z"
+                fill="#020202" p-id="4450"
+              />
+            </svg>
+            <span>文件夹上传</span>
+          </button>
         </div>
-      </div>
-    </template>
+        <span class="text-sm mt-1">文件冲突处理：{{ props.upload.overwrite ? "覆盖" : "跳过" }}</span>
+      </template>
+      <template v-else>
+        <div class="flex flex-col justify-center items-center h-full w-full">
+          <div class="flex flex-col justify-center items-center">
+            <span class="text-lg">上传处理中...</span>
+          </div>
+        </div>
+      </template>
+    </div>
   </div>
   <div v-else class="flex flex-col h-full w-full">
-    <div class="flex justify-center p-1 border-b border-b-base-300">
+    <div class="w-full">
+      <progress class="iw-progress iw-progress-primary w-full h-6 rounded-full " :value="progress" max="100" />
+      <span className=" relative -top-8 text-white text-sm font-medium" style="left: 46%">
+        {{ progress }}%
+      </span>
+    </div>
+    <div class="flex justify-center p-1 border-b border-b-base-300 -mt-8">
       <span class="font-bold" title="已上传文件数"> {{ uploadedStatsResp!.total_file_numbers }}</span> / <span
-        class="font-bold" title="总文件数"> {{ totalStatsResp!.total_file_numbers }}</span> &nbsp; | &nbsp;
-      <span class="font-bold" title="已上传大小"> {{ (uploadedStatsResp!.total_file_size / 1024 / 1024).toFixed(2) }}</span>
+        class="font-bold" title="总文件数"
+      > {{ totalStatsResp!.total_file_numbers }}</span> &nbsp; | &nbsp;
+      <!-- <span class="font-bold" title="已上传大小"> {{ (uploadedStatsResp!.total_file_size / 1024 / 1024).toFixed(2) }}</span>
       /
-      <span class="font-bold" title="总大小"> {{ (totalStatsResp!.total_file_size / 1024 / 1024).toFixed(2) }}</span> MB
+      <span class="font-bold" title="总大小"> {{ (totalStatsResp!.total_file_size / 1024 / 1024).toFixed(2) }}</span> MB -->
+      <label class="label cursor-pointer">
+        <span class="label-text">只看失败</span>
+        <input type="checkbox" class="iw-toggle iw-toggle-primary iw-toggle-sm" :checked="failOnly">
+      </label>
     </div>
     <div ref="progressRef" class="flex-1 overflow-auto text-sm" />
+    <button v-if="!isDone" class="iw-btn iw-btn-success iw-btn-sm self-center" @click="cancel">
+      中止
+    </button>
+    <button v-if="isDone" class="iw-btn iw-btn-success iw-btn-sm self-center" @click="exit0">
+      完成
+    </button>
   </div>
 </template>
 

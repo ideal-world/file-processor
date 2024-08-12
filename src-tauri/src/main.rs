@@ -57,9 +57,9 @@ async fn main() -> TardisResult<()> {
     }
 
     // Debug时使用此初始化 ``src-tauri/config``
-    #[cfg(debug_assertions)]
+    #[cfg(any(debug_assertions, dev))]
     {
-        let config = TardisConfig::init(Some("src-tauri/config")).await?;
+        let config = TardisConfig::init(Some("config")).await?;
         TardisFuns::init_conf(config).await?;
     }
 

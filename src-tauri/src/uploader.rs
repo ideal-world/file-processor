@@ -1,4 +1,5 @@
 use log::info;
+use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 #[cfg(any(target_os = "macos", target_os = "linux"))]
@@ -9,10 +10,12 @@ use std::{
     collections::HashMap,
     path::{Path, PathBuf},
     sync::Arc,
+    thread::sleep,
+    time::Duration,
 };
 use tardis::{
     basic::{error::TardisError, result::TardisResult},
-    futures::{future::BoxFuture, stream, FutureExt as _, StreamExt as _},
+    futures::{lock::Mutex, stream, StreamExt as _},
     rand::random,
     tokio::{
         fs::{read_dir, File},
@@ -23,7 +26,7 @@ use tardis::{
     web::reqwest,
     TardisFuns,
 };
-use tauri::{Manager as _, Window};
+use tauri::{async_runtime::TokioJoinHandle, Emitter as _, Window};
 
 use crate::FileUploadProcessParams;
 
@@ -140,6 +143,9 @@ pub struct UploadStatsResp {
     pub total_file_size: u64,
 }
 
+pub static BACKGROUND_TASK: Lazy<Mutex<Option<TokioJoinHandle<()>>>> =
+    Lazy::new(|| Mutex::new(None));
+
 pub async fn upload_files(
     files_uris: Vec<String>,
     window: Window,
@@ -153,7 +159,7 @@ pub async fn upload_files(
         for file_uri in files_uris {
             let origin_path = PathBuf::from(&file_uri);
             let base_path = origin_path.parent().unwrap_or(Path::new(""));
-            let paths = get_files(&file_uri).await?;
+            let paths = async_get_files(&file_uri).await?;
             for path in paths {
                 let mime_type = mime_infer::from_path(path.clone()).first_or_text_plain();
                 let file = File::open(path.clone())
@@ -162,7 +168,7 @@ pub async fn upload_files(
                 let relative_path = path
                     .strip_prefix(&base_path)
                     .map_err(|e| TardisError::io_error(&format!("io error:{e}"), "error"))?;
-                let mut size = 0;
+                let size;
                 #[cfg(any(target_os = "macos", target_os = "linux"))]
                 {
                     size = file.metadata().await?.size();
@@ -195,15 +201,67 @@ pub async fn upload_files(
             .into_iter()
             .sum();
 
-        spawn(async move {
-            backend_task(files, total_file_numbers, total_file_size, window, upload).await
-        });
+        let back_task;
+        if param.title.eq("请按使用文档调用（以下为示例）") {
+            //mock
+            back_task = spawn(async move {
+                mock_backend_task(files, total_file_numbers, total_file_size, window, upload).await
+            });
+        } else {
+            back_task = spawn(async move {
+                backend_task(files, total_file_numbers, total_file_size, window, upload).await
+            });
+        }
+        let mut guard = BACKGROUND_TASK
+            .try_lock()
+            .ok_or(TardisError::io_error(&format!("try lock error"), "error"))?;
+        guard.replace(back_task);
     }
 
     Ok(UploadStatsResp {
         total_file_numbers: total_file_numbers,
         total_file_size: total_file_size,
     })
+}
+
+async fn mock_backend_task(
+    files: Vec<(File, UploadFileInfo)>,
+    total_file_numbers: usize,
+    total_file_size: u64,
+    window: Window,
+    _config: FileUploadProcessParams,
+) {
+    let mut uploaded_file_numbers = 0;
+    let mut uploaded_file_size = 0;
+
+    for (_file, info) in files {
+        sleep(Duration::from_secs(1));
+        uploaded_file_numbers += 1;
+        uploaded_file_size += info.size;
+        window
+            .emit(
+                "upload-progress",
+                UploadProgressResp {
+                    uploaded_file_numbers,
+                    uploaded_file_size,
+                    current_files: vec![info],
+                    fail_files: vec![],
+                },
+            )
+            .unwrap();
+    }
+
+    window
+        .emit(
+            "upload-progress",
+            UploadProgressResp {
+                uploaded_file_numbers: total_file_numbers,
+                uploaded_file_size: total_file_size,
+                current_files: vec![],
+                fail_files: Vec::new(),
+            },
+        )
+        .unwrap();
 }
 
 async fn backend_task(
@@ -314,10 +372,6 @@ async fn get_metadata_size(file: &File) -> u64 {
     file.metadata().await.map(|md| md.len()).unwrap_or_default()
 }
 
-fn get_files<'a>(files_uri: &'a str) -> BoxFuture<'a, TardisResult<Vec<PathBuf>>> {
-    async_get_files(files_uri).boxed()
-}
-
 async fn async_get_files(file_uri: &str) -> TardisResult<Vec<PathBuf>> {
     let mut result = vec![];
     let path = PathBuf::from(file_uri);
@@ -331,7 +385,7 @@ async fn async_get_files(file_uri: &str) -> TardisResult<Vec<PathBuf>> {
             .map_err(|e| TardisError::io_error(&format!("io error:{e}"), "error"))?
         {
             match d.path().to_str() {
-                Some(path) => result.append(&mut get_files(path).await?),
+                Some(path) => result.append(&mut Box::pin(async_get_files(path)).await?),
                 None => continue,
             };
         }

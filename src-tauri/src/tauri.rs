@@ -5,12 +5,12 @@ use std::env;
 #[cfg(test)]
 use crate::FileUploadProcessParams;
 use crate::{
-    uploader::{self, UploadStatsResp},
+    uploader::{self, UploadStatsResp, BACKGROUND_TASK},
     FileProcessParams, PARAMS,
 };
 use base64::{engine::general_purpose, Engine as _};
 use log::{error, info};
-use tardis::{basic::result::TardisResult, TardisFuns};
+use tardis::{basic::{error::TardisError, result::TardisResult}, TardisFuns};
 #[cfg(not(debug_assertions))]
 use tardis::{config::config_dto::TardisConfig, futures::executor};
 #[cfg(not(debug_assertions))]
@@ -27,6 +27,18 @@ async fn upload_files(files_uris: Vec<String>, window: Window) -> TardisResult<U
 #[tauri::command]
 async fn get_params() -> TardisResult<FileProcessParams> {
     Ok((*PARAMS.lock().unwrap()).clone())
+}
+
+#[tauri::command]
+async fn cancel() -> TardisResult<()> {
+  let guard = BACKGROUND_TASK
+            .try_lock()
+            .ok_or(TardisError::io_error(&format!("try lock error"), "error"))?;
+  if let Some(task)=&(*guard) {
+      task.abort();
+      return Ok(())
+  }
+    Ok(())
 }
 
 fn set_params(params: FileProcessParams) -> TardisResult<()> {
@@ -69,6 +81,7 @@ pub fn build() {
                 .unwrap();
             Ok(())
         })
+        .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_deep_link::init())
         .plugin(
             tauri_plugin_log::Builder::new()
