@@ -10,7 +10,6 @@ use std::{
     collections::HashMap,
     path::{Path, PathBuf},
     sync::Arc,
-    thread::sleep,
     time::Duration,
 };
 use tardis::{
@@ -205,7 +204,7 @@ pub async fn upload_files(
         if param.title.eq("请按使用文档调用（以下为示例）") {
             //mock
             back_task = spawn(async move {
-                mock_backend_task(files, total_file_numbers, total_file_size, window, upload).await
+                mock_backend_task(files, total_file_numbers, total_file_size, window, upload).await;
             });
         } else {
             back_task = spawn(async move {
@@ -215,7 +214,7 @@ pub async fn upload_files(
         let mut guard = BACKGROUND_TASK
             .try_lock()
             .ok_or(TardisError::io_error(&format!("try lock error"), "error"))?;
-        guard.replace(back_task);
+        *guard = Some(back_task);
     }
 
     Ok(UploadStatsResp {
@@ -235,7 +234,7 @@ async fn mock_backend_task(
     let mut uploaded_file_size = 0;
 
     for (_file, info) in files {
-        sleep(Duration::from_secs(1));
+        tardis::tokio::time::sleep(Duration::from_secs(1)).await;
         uploaded_file_numbers += 1;
         uploaded_file_size += info.size;
         window
@@ -281,6 +280,7 @@ async fn backend_task(
     let semaphore = Arc::new(Semaphore::new(max_concurrent_tasks));
 
     for (mut file, info) in files {
+        tardis::tokio::task::yield_now().await;
         let n_tx = tx.clone();
         let config = config.clone();
         let semaphore = semaphore.clone();
