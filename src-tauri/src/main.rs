@@ -36,6 +36,11 @@ async fn main() -> TardisResult<()> {
                 info!("params: {:?}", params);
                 let mut params_set = PARAMS.lock().unwrap();
                 check_key(
+                    params
+                        .upload
+                        .clone()
+                        .map(|p| p.target_kind_key)
+                        .unwrap_or_default(),
                     params.upload.clone().and_then(|p| p.check_key_url),
                     params.upload.clone().and_then(|p| p.check_key),
                 )
@@ -75,16 +80,22 @@ async fn main() -> TardisResult<()> {
     Ok(())
 }
 
-async fn check_key(check_key_url: Option<String>, check_key: Option<String>) {
-    if let Some(check_key_url) = check_key_url {
-        if let Some(check_key) = check_key {
-            let _ = TardisFuns::web_client()
-                .post_str_to_str(
-                    format!("{}?check_key={}", check_key_url, check_key),
-                    "",
-                    HashMap::new(),
-                )
-                .await;
+async fn check_key(
+    target_version: String,
+    check_key_url: Option<String>,
+    check_key: Option<String>,
+) {
+    if target_version == env!("CARGO_PKG_VERSION").to_string() {
+        if let Some(check_key_url) = check_key_url {
+            if let Some(check_key) = check_key {
+                let _ = TardisFuns::web_client()
+                    .post_str_to_str(
+                        format!("{}?check_key={}", check_key_url, check_key),
+                        "",
+                        HashMap::new(),
+                    )
+                    .await;
+            }
         }
     }
 }
