@@ -14,8 +14,6 @@ const props = defineProps<{
 
 const totalStatsResp = ref<UploadStatsResp | null>(null)
 const uploadedStatsResp = ref<UploadStatsResp | null>(null)
-const progressRef = ref<HTMLElement>()
-const isUserScrolling = ref<boolean>(false)
 const triggerUpload = ref<boolean>(false)
 const isDone = ref<boolean>(false)
 const failOnly = ref<boolean>(false)
@@ -40,21 +38,7 @@ async function selectFiles(is_dir: boolean) {
   }
   totalStatsResp.value = await invoke('upload_files', { filesUris: filesUri })
   debug(`totalStatsResp.value :${JSON.stringify(totalStatsResp.value)}`)
-  // nextTick(() => {
-  //   listenScroll()
-  // })
 }
-
-// function listenScroll() {
-//   progressRef.value!.addEventListener('scroll', () => {
-//     if (progressRef.value!.scrollTop + progressRef.value!.clientHeight >= progressRef.value!.scrollHeight - 10) {
-//       isUserScrolling.value = false
-//     }
-//     else {
-//       isUserScrolling.value = true
-//     }
-//   })
-// }
 function handleFileListIsDone() {
   isDone.value = true
 }
