@@ -3,7 +3,7 @@
 use log::info;
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
-use serde_json::{json, Value};
+use serde_json::Value;
 use std::{collections::HashMap, env, sync::Mutex};
 #[cfg(debug_assertions)]
 use tardis::config::config_dto::TardisConfig;
@@ -35,6 +35,11 @@ async fn main() -> TardisResult<()> {
                 let params = tauri::parse_params(&url);
                 info!("params: {:?}", params);
                 let mut params_set = PARAMS.lock().unwrap();
+                check_key(
+                    params.upload.clone().and_then(|p| p.check_key_url),
+                    params.upload.clone().and_then(|p| p.check_key),
+                )
+                .await;
                 *params_set = params;
             }
             Err(_) => log::error!("parse url fail!:{raw_params}"),
@@ -48,10 +53,12 @@ async fn main() -> TardisResult<()> {
                 target_kind_key: "".to_string(),
                 target_obj_key: "".to_string(),
                 check_key: None,
+                check_key_url: None,
                 upload_metadata_url: "".to_string(),
                 upload_metadata_rename_filed: None,
                 upload_fixed_metadata: None,
                 upload_fixed_headers: None,
+                target_version: String::new(),
             }),
         };
     }
@@ -71,7 +78,7 @@ async fn main() -> TardisResult<()> {
 async fn check_key(check_key_url: Option<String>, check_key: Option<String>) {
     if let Some(check_key_url) = check_key_url {
         if let Some(check_key) = check_key {
-            TardisFuns::web_client()
+            let _ = TardisFuns::web_client()
                 .post_str_to_str(
                     format!("{}?check_key={}", check_key_url, check_key),
                     "",
@@ -94,6 +101,7 @@ pub struct FileProcessParams {
 pub struct FileUploadProcessParams {
     pub target_kind_key: String,
     pub target_obj_key: String,
+    pub target_version: String,
     pub check_key_url: Option<String>,
     pub check_key: Option<String>,
     // must be post

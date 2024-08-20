@@ -44,6 +44,11 @@ async fn cancel() -> TardisResult<()> {
     Ok(())
 }
 
+#[tauri::command]
+async fn get_version() -> TardisResult<String> {
+    Ok(env!("CARGO_PKG_VERSION").to_string())
+}
+
 fn set_params(params: FileProcessParams) -> TardisResult<()> {
     let mut params_set = PARAMS.lock().unwrap();
     *params_set = params;
@@ -97,7 +102,12 @@ pub fn build() {
         )
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_dialog::init())
-        .invoke_handler(tauri::generate_handler![upload_files, get_params, cancel])
+        .invoke_handler(tauri::generate_handler![
+            upload_files,
+            get_params,
+            cancel,
+            get_version
+        ])
         .build(tauri::generate_context!())
         .expect("error while running tauri application")
         .run(|_app, _event| {
@@ -146,5 +156,5 @@ pub fn parse_params(url: &reqwest::Url) -> FileProcessParams {
 fn test_parse_params() {
     let mut upload_fixed_headers = HashMap::new();
     upload_fixed_headers.insert(String::from("Token"), String::from("78hhySDFGT56gGh65"));
-    assert_eq!(parse_params(&reqwest::Url::parse("file-processor://eyJ0aXRsZSI6IuS4iuS8oOWIsO-8mmtub3dsZWRnZS03NC8iLCJ1cGxvYWQiOnsidGFyZ2V0X2tpbmRfa2V5IjoiIiwidGFyZ2V0X29ial9rZXkiOiIiLCJvdmVyd3JpdGUiOnRydWUsInVwbG9hZF9tZXRhZGF0YV91cmwiOiJ4eHh4IiwidXBsb2FkX2ZpeGVkX2hlYWRlcnMiOnsiVG9rZW4iOiI3OGhoeVNERkdUNTZnR2g2NSJ9fX0=").unwrap()),FileProcessParams{ title: String::from("上传到：knowledge-74/"), upload: Some(FileUploadProcessParams{ target_kind_key: String::new(), target_obj_key: String::new(), check_key: None, upload_metadata_url: String::from("xxxx"), upload_metadata_rename_filed: None, upload_fixed_metadata: None, upload_fixed_headers: Some(upload_fixed_headers) }) })
+    assert_eq!(parse_params(&reqwest::Url::parse("file-processor://eyJ0aXRsZSI6IuS4iuS8oOWIsO-8mmtub3dsZWRnZS03NC8iLCJ1cGxvYWQiOnsidGFyZ2V0X2tpbmRfa2V5IjoiIiwidGFyZ2V0X29ial9rZXkiOiIiLCJvdmVyd3JpdGUiOnRydWUsInVwbG9hZF9tZXRhZGF0YV91cmwiOiJ4eHh4IiwidXBsb2FkX2ZpeGVkX2hlYWRlcnMiOnsiVG9rZW4iOiI3OGhoeVNERkdUNTZnR2g2NSJ9fX0=").unwrap()),FileProcessParams{ title: String::from("上传到：knowledge-74/"), upload: Some(FileUploadProcessParams{target_kind_key:String::new(),target_obj_key:String::new(),check_key:None,upload_metadata_url:String::from("xxxx"),upload_metadata_rename_filed:None,upload_fixed_metadata:None,upload_fixed_headers:Some(upload_fixed_headers),check_key_url:None, target_version:env!("CARGO_PKG_VERSION").to_string() }) })
 }

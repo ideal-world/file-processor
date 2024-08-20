@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { defineEmits, defineProps, nextTick, onMounted, reactive, ref, watch } from 'vue'
+import { defineEmits, defineProps, nextTick, onMounted, ref, watch } from 'vue'
 import { listen } from '@tauri-apps/api/event'
 import { debug } from '@tauri-apps/plugin-log'
 import type { UploadProgressResp, UploadStatsResp } from './Uploader.vue'
@@ -109,7 +109,7 @@ enum UploadStat {
       v-for="file in fileList" :key="file.id"
     >
       <div
-        v-if="!props.failOnly || (props.failOnly && file.stat === UploadStat.Fail)" :id="file.id" class="flex bg-gray-200 border-2 border-dashed bg-gary-50 rounded-lg my-1" :class="[{
+        v-if="!props.failOnly || (props.failOnly && file.stat === UploadStat.Fail)" :id="file.id" class="flex bg-primary text-primary-content border-2 border-dashed rounded-lg my-1" :class="[{
           'upload-success': file.stat === UploadStat.Success,
           'upload-fail': file.stat === UploadStat.Fail,
           'upload': file.stat === UploadStat.Uploading,

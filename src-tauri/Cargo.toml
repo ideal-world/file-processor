@@ -2,7 +2,7 @@
 name = "file-processor"
 version = "0.1.0"
 description = "A file processor"
-authors = ["you"]
+authors = ["gudaoxuri <i@sunisle.org>", "RWDai <rwdai@foxmail.com>"]
 edition = "2021"
 
 [profile.dev]
