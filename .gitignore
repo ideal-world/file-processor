@@ -26,3 +26,4 @@ dist-ssr
 *.sw?
 
 src-tauri/Cargo.lock
+yarn.lock

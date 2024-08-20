@@ -35,6 +35,16 @@ async fn main() -> TardisResult<()> {
                 let params = tauri::parse_params(&url);
                 info!("params: {:?}", params);
                 let mut params_set = PARAMS.lock().unwrap();
+                check_key(
+                    params
+                        .upload
+                        .clone()
+                        .map(|p| p.target_kind_key)
+                        .unwrap_or_default(),
+                    params.upload.clone().and_then(|p| p.check_key_url),
+                    params.upload.clone().and_then(|p| p.check_key),
+                )
+                .await;
                 *params_set = params;
             }
             Err(_) => log::error!("parse url fail!:{raw_params}"),
@@ -47,25 +57,47 @@ async fn main() -> TardisResult<()> {
             upload: Some(FileUploadProcessParams {
                 target_kind_key: "".to_string(),
                 target_obj_key: "".to_string(),
-                overwrite: false,
+                check_key: None,
+                check_key_url: None,
                 upload_metadata_url: "".to_string(),
                 upload_metadata_rename_filed: None,
                 upload_fixed_metadata: None,
                 upload_fixed_headers: None,
+                target_version: String::new(),
             }),
         };
     }
 
     // Debug时使用此初始化 ``src-tauri/config``
-    #[cfg(debug_assertions)]
+    #[cfg(any(debug_assertions, dev))]
     {
-        let config = TardisConfig::init(Some("src-tauri/config")).await?;
+        let config = TardisConfig::init(Some("config")).await?;
         TardisFuns::init_conf(config).await?;
     }
 
     tauri::build();
 
     Ok(())
+}
+
+async fn check_key(
+    target_version: String,
+    check_key_url: Option<String>,
+    check_key: Option<String>,
+) {
+    if target_version == env!("CARGO_PKG_VERSION").to_string() {
+        if let Some(check_key_url) = check_key_url {
+            if let Some(check_key) = check_key {
+                let _ = TardisFuns::web_client()
+                    .post_str_to_str(
+                        format!("{}?check_key={}", check_key_url, check_key),
+                        "",
+                        HashMap::new(),
+                    )
+                    .await;
+            }
+        }
+    }
 }
 
 #[cfg_attr(test, derive(Eq, PartialEq))]
@@ -80,7 +112,9 @@ pub struct FileProcessParams {
 pub struct FileUploadProcessParams {
     pub target_kind_key: String,
     pub target_obj_key: String,
-    pub overwrite: bool,
+    pub target_version: String,
+    pub check_key_url: Option<String>,
+    pub check_key: Option<String>,
     // must be post
     pub upload_metadata_url: String,
     pub upload_metadata_rename_filed: Option<uploader::UploadMapFiled>,

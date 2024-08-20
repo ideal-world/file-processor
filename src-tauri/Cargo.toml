@@ -2,7 +2,7 @@
 name = "file-processor"
 version = "0.1.0"
 description = "A file processor"
-authors = ["you"]
+authors = ["gudaoxuri <i@sunisle.org>", "RWDai <rwdai@foxmail.com>"]
 edition = "2021"
 
 [profile.dev]
@@ -38,3 +38,4 @@ log = "0.4"
 reqwest = "0.12.5"
 tokio-util = { version = "0.7", features = ["codec"] }
 base64 = { version = "0.22" }
+tauri-plugin-process = "2.0.0-rc.0"
