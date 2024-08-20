@@ -34,6 +34,7 @@ pub struct UploadProgressResp {
     pub uploaded_file_numbers: usize,
     pub uploaded_file_size: u64,
     pub current_files: Vec<UploadFileInfo>,
+    pub success_files: Vec<UploadFileInfo>,
     pub fail_files: Vec<UploadFileInfo>,
 }
 
@@ -45,7 +46,6 @@ pub struct UploadFileInfo {
     pub relative_path: PathBuf,
     pub size: u64,
     pub mime_type: String,
-    pub overwrite: bool,
 }
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq, Hash)]
 pub enum UploadFileInfoFiled {
@@ -53,7 +53,6 @@ pub enum UploadFileInfoFiled {
     RelativePath,
     Size,
     MimeType,
-    Overwrite,
 }
 impl UploadFileInfoFiled {
     fn get_all() -> Vec<UploadFileInfoFiled> {
@@ -62,7 +61,6 @@ impl UploadFileInfoFiled {
             UploadFileInfoFiled::RelativePath,
             UploadFileInfoFiled::Size,
             UploadFileInfoFiled::MimeType,
-            UploadFileInfoFiled::Overwrite,
         ]
     }
     fn to_str_filed(&self) -> &str {
@@ -71,7 +69,6 @@ impl UploadFileInfoFiled {
             UploadFileInfoFiled::RelativePath => "relative_path",
             UploadFileInfoFiled::Size => "size",
             UploadFileInfoFiled::MimeType => "mime_type",
-            UploadFileInfoFiled::Overwrite => "overwrite",
         }
     }
 }
@@ -101,7 +98,6 @@ impl UploadFileInfo {
             }
             UploadFileInfoFiled::Size => json!(self.size),
             UploadFileInfoFiled::MimeType => json!(self.mime_type),
-            UploadFileInfoFiled::Overwrite => json!(self.overwrite),
         }
     }
     fn to_body(self, config: &FileUploadProcessParams) -> TardisResult<Value> {
@@ -186,7 +182,6 @@ pub async fn upload_files(
                     size,
                     mime_type: mime_type.to_string(),
                     id: random::<u64>().to_string(),
-                    overwrite: upload.overwrite,
                 };
 
                 files.push((file, info));
@@ -233,21 +228,54 @@ async fn mock_backend_task(
     let mut uploaded_file_numbers = 0;
     let mut uploaded_file_size = 0;
 
+    let mut last_file: Option<UploadFileInfo> = None;
     for (_file, info) in files {
         tardis::tokio::time::sleep(Duration::from_secs(1)).await;
         uploaded_file_numbers += 1;
         uploaded_file_size += info.size;
-        window
-            .emit(
-                "upload-progress",
-                UploadProgressResp {
-                    uploaded_file_numbers,
-                    uploaded_file_size,
-                    current_files: vec![info],
-                    fail_files: vec![],
-                },
-            )
-            .unwrap();
+        if let Some(last_file) = &last_file {
+            if random() {
+                window
+                    .emit(
+                        "upload-progress",
+                        UploadProgressResp {
+                            uploaded_file_numbers,
+                            uploaded_file_size,
+                            current_files: vec![info.clone()],
+                            fail_files: vec![last_file.clone()],
+                            success_files: vec![],
+                        },
+                    )
+                    .unwrap();
+            } else {
+                window
+                    .emit(
+                        "upload-progress",
+                        UploadProgressResp {
+                            uploaded_file_numbers,
+                            uploaded_file_size,
+                            current_files: vec![info.clone()],
+                            fail_files: vec![],
+                            success_files: vec![last_file.clone()],
+                        },
+                    )
+                    .unwrap();
+            }
+        } else {
+            window
+                .emit(
+                    "upload-progress",
+                    UploadProgressResp {
+                        uploaded_file_numbers,
+                        uploaded_file_size,
+                        current_files: vec![info.clone()],
+                        fail_files: vec![],
+                        success_files: vec![],
+                    },
+                )
+                .unwrap();
+        }
+        last_file = Some(info);
     }
 
     window
@@ -257,7 +285,12 @@ async fn mock_backend_task(
                 uploaded_file_numbers: total_file_numbers,
                 uploaded_file_size: total_file_size,
                 current_files: vec![],
-                fail_files: Vec::new(),
+                fail_files: vec![],
+                success_files: if last_file.is_some() {
+                    vec![]
+                } else {
+                    vec![last_file.unwrap()]
+                },
             },
         )
         .unwrap();
@@ -324,13 +357,16 @@ async fn backend_task(
 
     let mut current_files_map = HashMap::new();
     while let Some(((is_done, is_success), i)) = rx.recv().await {
+        let mut success_files = Vec::new();
         let mut fail_files = Vec::new();
         if uploaded_file_numbers == total_file_numbers {
             break;
         }
         if is_done {
             current_files_map.remove(&i.id);
-            if !is_success {
+            if is_success {
+                success_files.push(i)
+            } else {
                 fail_files.push(i)
             }
         } else {
@@ -350,6 +386,7 @@ async fn backend_task(
                         .map(|(_, info)| info.clone())
                         .collect(),
                     fail_files,
+                    success_files,
                 },
             )
             .unwrap();
@@ -362,7 +399,8 @@ async fn backend_task(
                 uploaded_file_numbers: total_file_numbers,
                 uploaded_file_size: total_file_size,
                 current_files: vec![],
-                fail_files: Vec::new(),
+                fail_files: vec![],
+                success_files: vec![],
             },
         )
         .unwrap();

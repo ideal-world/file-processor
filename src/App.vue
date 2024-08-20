@@ -34,10 +34,14 @@ export interface FileUploadProcessParams {
 </script>
 
 <template>
-  <div class="flex flex-col justify-center items-center p-2 text-base text-base-content bg-base-100 w-full"
-    style="height: 400px;">
-    <div class="text-lg font-bold bg-base-200 border border-base-300 p-2 rounded-md mb-2">
-      {{ params?.title }}
+  <div
+    class="flex flex-col justify-center items-center p-2 text-base text-base-content bg-base-100 w-full"
+    style="height: 400px;"
+  >
+    <div class="text-lg w-full flex flex-col justify-center items-center font-bold bg-base-200 border border-base-300 p-2 rounded-md mb-2">
+      <span>
+        {{ params?.title }}
+      </span>
     </div>
     <div ref="functionContainerRef" class="flex-1 w-full overflow-hidden">
       <UploaderComp v-if="params?.upload" :upload="params.upload" />
