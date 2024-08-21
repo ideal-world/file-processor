@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { defineEmits, defineProps, nextTick, onMounted, ref, watchEffect } from 'vue'
+import { defineEmits, defineProps, onMounted, ref, watchEffect } from 'vue'
 import { listen } from '@tauri-apps/api/event'
 import { debug } from '@tauri-apps/plugin-log'
 import type { UploadProgressResp, UploadStatsResp } from './Uploader.vue'
@@ -68,7 +68,7 @@ onMounted(() => {
 })
 
 const handleScroll = () => {
-  const element: HTMLElement = scrollContainer.value;
+  const element = scrollContainer.value!;
   if (element.scrollTop + element.clientHeight >= element.scrollHeight - 5) {
     userScrolled.value = true;
   } else {

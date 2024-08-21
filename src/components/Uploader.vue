@@ -3,14 +3,13 @@ import { invoke } from '@tauri-apps/api/core'
 import type { FileResponse } from '@tauri-apps/plugin-dialog'
 import { message, open } from '@tauri-apps/plugin-dialog'
 import { debug, info } from '@tauri-apps/plugin-log'
-import { nextTick, ref } from 'vue'
+import { ref } from 'vue'
 import { exit } from '@tauri-apps/plugin-process'
-import type { FileUploadProcessParams } from '../App.vue'
 import FileList from './FileList.vue'
 
-const props = defineProps<{
-  upload: FileUploadProcessParams
-}>()
+// const props = defineProps<{
+//   upload: FileUploadProcessParams
+// }>()
 
 const totalStatsResp = ref<UploadStatsResp | null>(null)
 const uploadedStatsResp = ref<UploadStatsResp | null>(null)
