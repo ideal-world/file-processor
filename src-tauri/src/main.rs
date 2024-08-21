@@ -10,6 +10,7 @@ use tardis::config::config_dto::TardisConfig;
 #[cfg(debug_assertions)]
 use tardis::TardisFuns;
 use tardis::{basic::result::TardisResult, tokio};
+mod processor_config;
 mod tauri;
 mod uploader;
 
