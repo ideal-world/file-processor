@@ -119,11 +119,12 @@ enum UploadStat {
   <div ref="scrollContainer" @scroll="handleScroll" class="flex-1 overflow-auto text-sm">
     <div v-for="file in fileList" :key="file.id">
       <div v-if="!props.failOnly || (props.failOnly && file.stat === UploadStat.Fail)" :id="file.id"
-        class="flex bg-primary text-primary-content border-2 border-dashed border-base-300 rounded-lg my-1" :class="[{
+        class="flex bg-primary text-primary-content border-2 border-dashed border-base-300 rounded-lg my-1 z-999"
+        :class="[{
           'upload-success': file.stat === UploadStat.Success,
           'upload-fail': file.stat === UploadStat.Fail,
           'upload': file.stat === UploadStat.Uploading,
-        }]">
+        },]" :title="file.stat === UploadStat.Fail ? '网络问题失败!' : ''">
         <div class="truncate w-0 flex flex-grow">
           <span class="flex-shrink truncate">{{ file.relative_path }}</span>
           <div class="ml-2 flex-shrink-0 flex items-center min-w-[1rem]">

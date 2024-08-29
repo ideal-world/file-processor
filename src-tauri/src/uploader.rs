@@ -388,14 +388,14 @@ async fn backend_task(
         }
         if is_done {
             current_files_map.remove(&i.id);
+            uploaded_file_numbers += 1;
+            uploaded_file_size += i.size;
             if is_success {
                 success_files.push(i)
             } else {
                 fail_files.push(i)
             }
         } else {
-            uploaded_file_numbers += 1;
-            uploaded_file_size += i.size;
             current_files_map.insert(i.id.clone(), i);
         }
 

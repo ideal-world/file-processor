@@ -1,6 +1,6 @@
 [package]
 name = "file-processor"
-version = "0.1.0"
+version = "0.1.1"
 description = "A file processor"
 authors = ["gudaoxuri <i@sunisle.org>", "RWDai <rwdai@foxmail.com>"]
 edition = "2021"
