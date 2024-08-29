@@ -69,17 +69,17 @@ onMounted(() => {
 
 const handleScroll = () => {
   const element = scrollContainer.value!;
-  if (element.scrollTop + element.clientHeight >= element.scrollHeight - 5) {
-    userScrolled.value = true;
-  } else {
+  if (element.scrollTop + element.clientHeight >= element.scrollHeight - 28) {
     userScrolled.value = false;
+  } else {
+    userScrolled.value = true;
   }
 };
 
 // 自动滚动到底部，除非用户手动调整了滚动条
 watchEffect(() => {
   if (!userScrolled.value && fileList.value.length > 8 && scrollContainer.value) {
-    scrollContainer.value.scrollTop = scrollContainer.value.scrollHeight;
+    scrollContainer.value.scrollTop = scrollContainer.value.scrollHeight - scrollContainer.value.clientHeight;
   }
 });
 
