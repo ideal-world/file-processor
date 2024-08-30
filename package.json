@@ -10,17 +10,17 @@
     "tauri": "tauri"
   },
   "dependencies": {
-    "@tauri-apps/api": "2.0.0-beta.13",
-    "@tauri-apps/plugin-dialog": "2.0.0-beta.5",
-    "@tauri-apps/plugin-log": "2.0.0-beta.6",
-    "@tauri-apps/plugin-process": "2.0.0-rc.0",
-    "@tauri-apps/plugin-shell": "2.0.0-beta.6",
+    "@tauri-apps/api": "2.0.0-rc.4",
+    "@tauri-apps/plugin-dialog": "2.0.0-rc.1",
+    "@tauri-apps/plugin-log": "2.0.0-rc.1",
+    "@tauri-apps/plugin-process": "2.0.0-rc.1",
+    "@tauri-apps/plugin-shell": "2.0.0-rc.1",
     "less": "^4.2.0",
     "vue": "^3.4.29"
   },
   "devDependencies": {
     "@antfu/eslint-config": "^2.21.1",
-    "@tauri-apps/cli": "2.0.0-beta.20",
+    "@tauri-apps/cli": "2.0.0-rc.8",
     "@vitejs/plugin-vue": "^5.0.5",
     "autoprefixer": "^10.4.19",
     "daisyui": "^4.12.2",
