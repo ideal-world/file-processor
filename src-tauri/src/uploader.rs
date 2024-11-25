@@ -444,7 +444,7 @@ async fn async_get_files(file_uri: &str) -> TardisResult<Vec<PathBuf>> {
     if path.is_file() {
         result.push(path);
     } else {
-        let mut dir = read_dir(file_uri).await.expect("can't open dir");
+        let mut dir = read_dir(file_uri).await.expect(&format!("can't open dir:{file_uri}"));
         result.push(path);
         let mut push_dir = true;
         while let Some(d) = dir
